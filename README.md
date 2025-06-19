@@ -30,7 +30,7 @@ The diverse type of terrain surfaces, each with different geometry and traction,
   - FreeSeg: Vision-based free space segmentation
   - BEVHeightNet: BEV Height Map
   - PathSeg: Vision-based Path segmentation
-  - DomainSeg: Vision-based object Segmentation
+  - ObjectSeg: Vision-based object Segmentation
 - Mars/Moon
   - BEV fusion (proposed)
 
