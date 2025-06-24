@@ -28,7 +28,7 @@ The diverse type of terrain surfaces, each with different geometry and traction,
 ## Vision Stacks
 - Terrestrial
   - FreeSeg: Vision-based free space segmentation
-  - BEVHeightNet: BEV Height Map
+  - TerrainHeightMap: Terrain height map from depth estimation
   - PathSeg: Vision-based Path segmentation
   - ObjectSeg: Vision-based object Segmentation
 - Mars/Moon
