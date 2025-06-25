@@ -6,8 +6,12 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import argparse
+from tqdm import tqdm
+from PIL import Image
+import torchvision.transforms as T
+from utils import get_mean_std
 
-class GooseVisDataset(Dataset):
+class GooseDataset(Dataset):
     def __init__(self, root_dir, split="train", transform=None):
         img_pattern = os.path.join(root_dir, "images", split, "**", "*_vis.png")
         mask_pattern = os.path.join(root_dir, "labels", split, "**", "*_color.png")
@@ -44,11 +48,14 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    dataset = GooseVisDataset(root_dir=args.root_dir, split=args.split)
+    dataset = GooseDataset(root_dir=args.root_dir, split=args.split)
     print(f"Dataset size: {len(dataset)}")
-    print(f"Sample {args.index}:")
-    print(dataset[args.index])
-    
+
+    mean, std = get_mean_std(dataset)
+
+    print(f"mean: {mean}")
+    print(f"std: {std}")
+
     img, mask = dataset[args.index]["image"], dataset[args.index]["mask"]
     img = img.permute(1, 2, 0).numpy()
     mask = mask.numpy()
