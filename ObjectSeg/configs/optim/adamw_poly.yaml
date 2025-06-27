@@ -1,0 +1,9 @@
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 6e-5
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.PolynomialLR
+  total_iters: 160000
+  power: 1.0

@@ -1,0 +1,6 @@
+_target_: segformer_model.SegDataModule
+root:       /home/autokarthik/autoware.off-road/goose-dataset      
+num_classes: 12
+img_size:    1024
+batch_size:  4
+num_workers: 8

@@ -1,0 +1,4 @@
+_target_: lightning.pytorch.callbacks.EarlyStopping
+monitor: val_miou
+mode: max
+patience: 10
