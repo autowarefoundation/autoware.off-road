@@ -1,0 +1,18 @@
+label_colors:
+  0: [0, 0, 0]         # background - black
+  1: [128, 64, 128]    # road
+  2: [244, 35, 232]    # sidewalk
+  3: [70, 70, 70]      # building
+  4: [102, 102, 156]   # wall
+  5: [190, 153, 153]   # fence
+  6: [153, 153, 153]   # pole
+  7: [250, 170, 30]    # traffic light
+  8: [220, 220, 0]     # traffic sign
+  9: [107, 142, 35]    # vegetation
+  10: [152, 251, 152]  # terrain
+  11: [70, 130, 180]   # sky
+  12: [220, 20, 60]    # person
+  13: [255, 0, 0]      # rider
+  14: [0, 0, 142]      # car
+  15: [0, 0, 70]       # truck
+
