@@ -1,2 +1,4 @@
 goose-dataset/
 .venv/
+.vscode/
+__pycache__/
