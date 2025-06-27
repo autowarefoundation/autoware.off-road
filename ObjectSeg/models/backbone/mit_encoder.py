@@ -155,7 +155,7 @@ if __name__ == '__main__':
     model = MixVisionTransformer(variant='B0')
     x = torch.randn(1,3,224,224)
     outs = model(x)
-    print(outs[0][0].shape)
+    print(outs[0])
 
 
     
