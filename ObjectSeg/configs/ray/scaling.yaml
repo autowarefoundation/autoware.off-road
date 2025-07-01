@@ -1,0 +1,3 @@
+_target_: ray.train.ScalingConfig
+num_workers: 4     # total GPUs (can span nodes)
+use_gpu: true
