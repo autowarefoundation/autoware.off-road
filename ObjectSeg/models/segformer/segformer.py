@@ -6,7 +6,7 @@ import lightning as L
 from torchmetrics.classification import MulticlassJaccardIndex, Accuracy
 import hydra.utils as hu
 from omegaconf import OmegaConf
-
+import functools
 
 class SegFormer(nn.Module):
     """
@@ -37,14 +37,16 @@ class SegFormer(nn.Module):
         return seg
 
 class LitSegFormer(L.LightningModule):
-    def __init__(self, num_classes: int = 19, variant: str = "B0", lr: float = 6e-5, weight_decay: float = 0.01):
+    def __init__(self, num_classes: int = 19, variant: str = "B0",optim_config = None,lr_scheduler_config = None):
         super().__init__()
         self.save_hyperparameters()
         self.model = SegFormer(variant, num_classes)
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(ignore_index=255)
         self.miou = MulticlassJaccardIndex(num_classes=num_classes, ignore_index=255)
         self.acc  = Accuracy(task="multiclass", num_classes=num_classes,
                                           ignore_index=255)
+        self.optim_config = optim_config
+        self.lr_scheduler_config = lr_scheduler_config
 
     def forward(self, x):
         return self.model(x)
@@ -68,11 +70,10 @@ class LitSegFormer(L.LightningModule):
         self._shared_step(batch, "val")
 
     def configure_optimizers(self):
-        opt = torch.optim.AdamW(self.parameters(),
-                                lr=self.hparams.lr,
-                                weight_decay=self.hparams.weight_decay)
-        sched = torch.optim.lr_scheduler.PolynomialLR(opt, total_iters=160_000,
-                                                      power=1.0)  # poly decay
+        opt = hu.instantiate(self.optim_config,params=self.parameters())
+        sched = hu.instantiate(self.lr_scheduler_config,optimizer=opt)
+        if isinstance(sched, functools.partial):
+            sched = sched()          # ← turn into real scheduler
         return {"optimizer": opt, "lr_scheduler": sched}
 
 if __name__ == '__main__':

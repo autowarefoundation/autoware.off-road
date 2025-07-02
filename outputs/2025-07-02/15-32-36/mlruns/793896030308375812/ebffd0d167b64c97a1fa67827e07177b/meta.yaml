@@ -1,0 +1,14 @@
+artifact_uri: file:///home/autokarthik/autoware.off-road/outputs/2025-07-02/15-32-36/mlruns/793896030308375812/ebffd0d167b64c97a1fa67827e07177b/artifacts
+end_time: 1751484770636
+entry_point_name: ''
+experiment_id: '793896030308375812'
+lifecycle_stage: active
+run_id: ebffd0d167b64c97a1fa67827e07177b
+run_name: nervous-gnu-969
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1751484769604
+status: 4
+tags: []
+user_id: autokarthik

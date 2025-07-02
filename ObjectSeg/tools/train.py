@@ -5,9 +5,12 @@ import hydra.utils as hu
 from ray.train.torch import TorchTrainer
 from ray.train.lightning import prepare_trainer
 from ray.train import ScalingConfig
-from segformer_model import LitSegFormer   # wraps SegFormer + loss + metrics
+from models.segformer.segformer import LitSegFormer  
+from datamodule.goose_dataset import GooseDataset
+from lightning.pytorch.utilities import rank_zero_only
+from models.segformer.segformer import LitSegFormer  
 
-@hydra.main(config_path="conf", config_name="config", version_base="1.3")
+@hydra.main(config_path="/home/autokarthik/autoware.off-road/ObjectSeg/configs", config_name="config", version_base="1.3")
 def main(cfg):
     L.seed_everything(cfg.seed, workers=True)
 
@@ -15,14 +18,13 @@ def main(cfg):
         loop_cfg = OmegaConf.create(loop_cfg_dict)
 
         dm   = hu.instantiate(loop_cfg.datamodule)
-        net  = hu.instantiate(loop_cfg.model)
-        lit  = LitSegFormer(model=net,
-                            optimizer_cfg=loop_cfg.optim.optimizer,
-                            scheduler_cfg=loop_cfg.optim.scheduler)
+        lit  = hu.instantiate(loop_cfg.model)
+        
 
-        callbacks = [hu.instantiate(c) for c in loop_cfg.callbacks]
+        callbacks = [hu.instantiate(c) for c in loop_cfg.callbacks.values()]
         logger    = None
-        if L.utilities.rank_zero.rank_zero_only.rank_zero():
+        
+        if rank_zero_only.rank == 0:
             logger = hu.instantiate(loop_cfg.logger)
             logger.log_hyperparams(OmegaConf.to_container(loop_cfg, resolve=True))
             logger.log_graph(lit)
@@ -37,7 +39,7 @@ def main(cfg):
     TorchTrainer(
         train_loop,
         scaling_config=scaling_cfg,
-        train_loop_config=OmegaConf.to_container(cfg, resolve=False)
+        train_loop_config=OmegaConf.to_container(cfg, resolve=True)  # type: ignore
     ).fit()
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+callbacks:
+  early_stop:
+    _target_: lightning.pytorch.callbacks.EarlyStopping
+    monitor: val_miou
+    mode: max
+    patience: 10
+
+  ckpt:
+    _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    monitor: val_miou
+    mode: max
+    save_top_k: 5
+    save_last: true
+    filename: segformer-{epoch:02d}-{val_miou:.4f}
+
+  lr_monitor:
+    _target_: lightning.pytorch.callbacks.LearningRateMonitor
+    logging_interval: step
+
+  ray_report:
+    _target_: ray.train.lightning.RayTrainReportCallback

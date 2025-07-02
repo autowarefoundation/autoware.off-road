@@ -1,15 +1,11 @@
 defaults:
-  - datamodule: goose_dataset
+  - datamodule: goose
   - model: B2
   - optim: adamw_poly
   - trainer: default
   - logger: mlflow
   - ray: scaling
-  - callbacks:
-      - early_stop
-      - ckpt
-      - lr_monitor
-      - ray_report
+  - callbacks
   - _self_
 
 seed: 42

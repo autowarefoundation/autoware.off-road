@@ -1,0 +1,14 @@
+artifact_uri: file:///home/autokarthik/autoware.off-road/outputs/2025-07-02/12-57-44/mlruns/545924593077177352/ac31235af60f4a929ca3b5412ce29bae/artifacts
+end_time: 1751475481759
+entry_point_name: ''
+experiment_id: '545924593077177352'
+lifecycle_stage: active
+run_id: ac31235af60f4a929ca3b5412ce29bae
+run_name: welcoming-colt-573
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1751475481583
+status: 4
+tags: []
+user_id: autokarthik

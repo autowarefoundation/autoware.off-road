@@ -1,0 +1,14 @@
+artifact_uri: file:///home/autokarthik/autoware.off-road/outputs/2025-07-02/12-52-57/mlruns/788496164821606643/cff383644ef848c99899c20e046f2224/artifacts
+end_time: 1751475192623
+entry_point_name: ''
+experiment_id: '788496164821606643'
+lifecycle_stage: active
+run_id: cff383644ef848c99899c20e046f2224
+run_name: glamorous-whale-622
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1751475192446
+status: 4
+tags: []
+user_id: autokarthik
