@@ -19,7 +19,7 @@ class GooseDataset(Dataset):
         img_pattern = os.path.join(root_dir, "images", split, "**", "*_vis.png")
         mask_pattern = os.path.join(root_dir, "labels", split, "**", "*_color.png")
         self.img_paths = sorted(glob(img_pattern, recursive=True))
-        self.mask_paths = sorted(glob(mask_pattern, recursive=True))
+        self.img_paths, self.mask_paths = self.check_image_mask_path()
         self.transform = build_segformer_train_augs(crop_size, scale_base, ratio_range, mean, std) if split == "train" else A.Compose([
             A.Resize(height=512, width=512),
             A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
@@ -28,6 +28,18 @@ class GooseDataset(Dataset):
 
     def __len__(self):
         return len(self.img_paths)
+
+    def check_image_mask_path(self):
+        image_paths, mask_paths = [], []
+        for image_path in self.img_paths:
+            mask_path = image_path.replace("images", "labels").replace("_vis.png", "_color.png")
+            if not os.path.exists(mask_path):
+                print(f"Mask path not found for {image_path}")
+                continue
+            image_paths.append(image_path)
+            mask_paths.append(mask_path)
+        return image_paths, mask_paths
+
 
     def __getitem__(self, idx):
         img_fp = self.img_paths[idx]
