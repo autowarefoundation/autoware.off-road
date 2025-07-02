@@ -1,1 +1,0 @@
-segformer-{epoch:02d}-{val_miou:.4f}

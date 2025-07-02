@@ -1,6 +1,0 @@
-artifact_location: file:///home/autokarthik/autoware.off-road/outputs/2025-07-02/15-34-58/mlruns/605322790499260486
-creation_time: 1751484910656
-experiment_id: '605322790499260486'
-last_update_time: 1751484910656
-lifecycle_stage: active
-name: SegFormer
