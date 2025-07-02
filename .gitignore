@@ -2,3 +2,4 @@ goose-dataset/
 .venv/
 .vscode/
 __pycache__/
+outputs/
