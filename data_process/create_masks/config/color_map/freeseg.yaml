@@ -1,0 +1,5 @@
+color_map:
+  0: [0, 0, 0]            # non-drivable -> black
+  255: [255, 255, 255]    # drivable     -> white
+
+

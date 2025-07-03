@@ -1,0 +1,6 @@
+defaults:
+- dataset: freeseg_rellis3D
+- color_map: freeseg
+- _self_
+
+dataset_dir: /media/autoware/PoPoSSD/off-road_datasets/
