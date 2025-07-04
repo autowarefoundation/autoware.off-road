@@ -1,0 +1,69 @@
+mask_id: "Goose/goose_2d_train/labels/train/**/**_labelids.png"
+mask_color: "Goose/goose_2d_train/labels/train/**/**_color.png"
+new_mask_id: "Goose/Autoware_freeseg_lable_id"
+new_mask_color: "Goose/Autoware_freeseg_lable_color"
+id_map:
+  0: 255  # undefined          -> drivable (over-exposed area)
+  1: 0    # traffic_cone       -> non-drivable
+  2: 255  # snow               -> drivable
+  3: 255  # cobble             -> drivable
+  4: 0    # obstacle           -> non-drivable
+  5: 255  # leaves             -> drivable
+  6: 0    # street_light       -> non-drivable
+  7: 255  # bikeway            -> drivable
+  8: 0    # ego_vehicle        -> non-drivable
+  9: 0    # pedestrian_crossing-> non-drivable
+  10: 0   # road_block         -> non-drivable
+  11: 255 # road_marking       -> drivable
+  12: 0   # car                -> non-drivable
+  13: 0   # bicycle            -> non-drivable
+  14: 0   # person             -> non-drivable
+  15: 0   # bus                -> non-drivable
+  16: 0   # forest             -> non-drivable
+  17: 0   # bush               -> non-drivable
+  18: 255 # moss               -> drivable
+  19: 0   # traffic_light      -> non-drivable
+  20: 0   # motorcycle         -> non-drivable 
+  21: 0   # sidewalk           -> non-drivable
+  22: 0   # curb               -> non-drivable
+  23: 255 # asphalt            -> drivable
+  24: 255 # gravel             -> drivable
+  25: 0   # boom_barrier       -> non-drivable
+  26: 0   # rail_track         -> non-drivable
+  27: 0   # tree_crown         -> non-drivable
+  28: 0   # tree_trunk         -> non-drivable
+  29: 0   # debris             -> non-drivable
+  30: 0   # crops              -> non-drivable
+  31: 255 # soil               -> drivable
+  32: 0   # rider              -> non-drivable
+  33: 0   # animal             -> non-drivable
+  34: 0   # truck              -> non-drivable
+  35: 0   # on_rails           -> non-drivable
+  36: 0   # caravan            -> non-drivable
+  37: 0   # trailer            -> non-drivable
+  38: 0   # building           -> non-drivable
+  39: 0   # wall               -> non-drivable
+  40: 0   # rock               -> non-drivable
+  41: 0   # fence              -> non-drivable
+  42: 0   # guard_rail         -> non-drivable
+  43: 0   # bridge             -> non-drivable
+  44: 0   # tunnel             -> non-drivable
+  45: 0   # pole               -> non-drivable
+  46: 0   # traffic_sign       -> non-drivable
+  47: 0   # misc_sign          -> non-drivable
+  48: 0   # barrier_tape       -> non-drivable
+  49: 0   # kick_scooter       -> non-drivable
+  50: 255 # low_grass          -> drivable
+  51: 255 # high_grass         -> drivable
+  52: 255 # scenery_vegetation -> drivable
+  53: 0   # sky                -> non-drivable
+  54: 255 # water              -> drivable
+  55: 0   # wire               -> non-drivable 
+  56: 0   # outlier            -> non-drivable 
+  57: 0   # heavy_machinery    -> non-drivable 
+  58: 0   # container          -> non-drivable 
+  59: 0   # hedge              -> non-drivable 
+  60: 0   # barrel             -> non-drivable 
+  61: 0   # pipe               -> non-drivable 
+  62: 255 # tree_root          -> drivable 
+  63: 0   # military_vehicle   -> non-drivable 

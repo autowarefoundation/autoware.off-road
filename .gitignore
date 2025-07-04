@@ -1,2 +1,3 @@
 goose-dataset/
+data_process/create_masks/outputs/
 .venv/
