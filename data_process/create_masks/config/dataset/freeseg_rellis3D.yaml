@@ -1,0 +1,25 @@
+mask_id: "Rellis_3D/Rellis_3D_pylon_camera_node_label_id/**/**/**/*.png"
+mask_color: "Rellis_3D/Rellis_3D_pylon_camera_node_label_color/**/**/**/*.png"
+new_mask_id: "Rellis_3D/Autoware_freeseg_lable_id"
+new_mask_color: "Rellis_3D/Autoware_freeseg_lable_color"
+id_map:
+  0: 0    # void    -> non-drivable
+  1: 255  # dirt    -> drivable
+  3: 255  # grass   -> drivable
+  4: 0    # tree    -> non-drivable
+  5: 0    # pole    -> non-drivable
+  6: 0    # water   -> non-drivable
+  7: 0    # sky     -> non-drivable
+  8: 0    # vehicle -> non-drivable
+  9: 0    # object  -> non-drivable
+  10: 255 # asphalt -> drivable
+  12: 0   # building-> non-drivable
+  15: 0   # log     -> non-drivable
+  17: 0   # person  -> non-drivable
+  18: 0   # fence   -> non-drivable
+  19: 0   # bush    -> non-drivable
+  23: 255 # concrete-> drivable
+  27: 0   # barrier -> non-drivable
+  31: 255 # puddle  -> drivable
+  33: 255 # mud     -> drivable
+  34: 255 # rubble  -> drivable
