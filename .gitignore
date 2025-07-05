@@ -1,3 +1,6 @@
 goose-dataset/
-data_process/create_masks/outputs/
 .venv/
+.vscode/
+__pycache__/
+outputs/
+data_process/create_masks/outputs/

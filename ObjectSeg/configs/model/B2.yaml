@@ -1,0 +1,6 @@
+_target_: models.segformer.segformer.LitSegFormer
+_recursive_: false  
+variant:      B2
+num_classes:  ${datamodule.num_classes}
+optim_config: ${optim.optimizer}
+lr_scheduler_config: ${optim.scheduler}

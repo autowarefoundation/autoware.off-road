@@ -1,0 +1,4 @@
+_target_: lightning.pytorch.loggers.MLFlowLogger
+experiment_name: SegFormer
+tracking_uri: file:${hydra:runtime.output_dir}/mlruns
+log_model: true

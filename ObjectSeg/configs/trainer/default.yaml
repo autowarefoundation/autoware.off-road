@@ -1,0 +1,9 @@
+_target_: lightning.pytorch.Trainer
+max_epochs: 80
+accelerator: auto
+devices: auto
+precision: bf16-mixed
+strategy:
+  _target_: ray.train.lightning.RayDDPStrategy
+plugins:
+  - _target_: ray.train.lightning.RayLightningEnvironment
