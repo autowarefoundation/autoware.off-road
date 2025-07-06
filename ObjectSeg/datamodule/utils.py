@@ -1,7 +1,52 @@
+import os
+from glob import glob
+import cv2
+import numpy as np
 import torch
+from torch.utils.data import Dataset, DataLoader
+import matplotlib.pyplot as plt
+import argparse
 from tqdm import tqdm
+from PIL import Image
+import torchvision.transforms as T
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+import lightning as L
+import pandas as pd
+
+
+def hex_to_rgb(hex_color):
+    """Convert hex color string to RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def read_label_mapping(csv_path):
+    """
+    Read CSV file and create label mappings.
+    
+    Args:
+        csv_path (str): Path to the CSV file containing label mappings
+        
+    Returns:
+        tuple: (label_id_to_name, rgb_to_label_id)
+            - label_id_to_name: dict with label_id as key and label_name as value
+            - rgb_to_label_id: dict with RGB tuple as key and label_id as value
+    """
+    df = pd.read_csv(csv_path)
+    label_id_to_name = {}
+    for _, row in df.iterrows():
+        label_id = row['label_key']
+        label_name = row['class_name']
+        label_id_to_name[label_id] = label_name
+    
+    rgb_to_label_id = {}
+    for _, row in df.iterrows():
+        hex_color = row['hex']
+        label_id = row['label_key']
+        rgb_tuple = hex_to_rgb(hex_color)
+        rgb_to_label_id[rgb_tuple] = label_id
+    
+    return label_id_to_name, rgb_to_label_id
 
 
 def get_mean_std(dataset):

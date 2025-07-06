@@ -7,6 +7,7 @@ from torchmetrics.classification import MulticlassJaccardIndex, Accuracy
 import hydra.utils as hu
 from omegaconf import OmegaConf
 import functools
+from datamodule.goose_dataset import GooseDataset
 
 class SegFormer(nn.Module):
     """
@@ -77,7 +78,13 @@ class LitSegFormer(L.LightningModule):
         return {"optimizer": opt, "lr_scheduler": sched}
 
 if __name__ == '__main__':
-    model = SegFormer(variant='B0', num_classes=12)
-    x = torch.randn(1,3,224,224)
+    model = SegFormer(variant='B0', num_classes=64)
+    dataset = GooseDataset(root_dir="/home/autokarthik/autoware.off-road/goose-dataset", split="train")
+    x,z = dataset[0]
+    x = x.unsqueeze(0)
+    z = z.unsqueeze(0)
     y = model(x)
+    #z = torch.randn(1,64,224,224)
+    loss = nn.CrossEntropyLoss()
+    print(loss(y,z))
     print(y.shape)

@@ -1,9 +1,10 @@
 _target_: datamodule.goose_dataset.GooseDataModule 
-root: /home/autokarthik/autoware.off-road/goose-dataset    
+root: /home/autokarthik/autoware.off-road/goose-dataset 
+label_mapping_path: goose_label_mapping.csv
 batch_size: 4
 num_workers: 8
-num_classes: 12
-img_size: [512, 512]   
+num_classes: 64
+img_size: [224, 224]   
 scale_base: [2048, 512]
 ratio_range: [0.5, 2.0]
 mean: [123.675, 116.28, 103.53]

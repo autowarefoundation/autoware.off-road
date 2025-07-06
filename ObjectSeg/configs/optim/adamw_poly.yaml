@@ -1,6 +1,6 @@
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 6e-5
+  lr: 2e-4
   weight_decay: 0.01
 
 scheduler:
