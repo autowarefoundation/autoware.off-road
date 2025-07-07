@@ -31,10 +31,29 @@ class PrepareDataset:
             cv2.imwrite(str(full_path), image)
 
     def remap_mask_id(self, idx):
-        mask = cv2.imread(self.mask_id_paths[idx], cv2.IMREAD_GRAYSCALE)
-        remapped = np.copy(mask)
+        # Load image (grayscale or color as-is)
+        mask = cv2.imread(self.mask_id_paths[idx], cv2.IMREAD_UNCHANGED)
+        if mask is None:
+            raise ValueError(f"Failed to read image at {self.mask_id_paths[idx]}")
+
+        is_color = len(mask.shape) == 3 and mask.shape[2] == 3
+        remapped = np.zeros(mask.shape[:2], dtype=np.uint8)
+
         for old_id, new_id in self.id_map.items():
-            remapped[mask == old_id] = new_id
+            if is_color:
+                # Expect old_id to be a list or tuple: [R, G, B]
+                if not isinstance(old_id, (list, tuple)) or len(old_id) != 3:
+                    raise ValueError(f"Expected RGB list/tuple for color mask, got: {old_id}")
+                rgb = tuple(old_id)
+                match = np.all(mask == rgb, axis=-1)
+            else:
+                # Expect old_id to be an int for grayscale
+                if not isinstance(old_id, int):
+                    raise ValueError(f"Expected int for grayscale mask, got: {old_id}")
+                match = mask == old_id
+
+            remapped[match] = new_id
+
         return remapped
 
     def remap_mask_color(self, mask_path):
