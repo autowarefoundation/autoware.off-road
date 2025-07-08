@@ -94,7 +94,7 @@ class PrepareDataset:
             color_mask[mask == class_id] = rgb
         return color_mask
 
-    def build_dest_mask_id(self):
+    def build_dst_mask_id(self):
         for i, src_label_path in enumerate(self.mask_label_paths):
             remapped_mask = self.remap_mask_id(i)
             sub_path = self.get_relative_subpath(src_label_path, self.keep_levels)
@@ -107,7 +107,7 @@ class PrepareDataset:
             else:
                 print(f"[mask_id] {i + 1}/{len(self.mask_label_paths)} - {sub_path} (skipped, exists)")
 
-    def build_dest_mask_color(self):
+    def build_dst_mask_color(self):
         for i, src_label_path in enumerate(self.mask_label_paths):
             sub_path = self.get_relative_subpath(src_label_path, self.keep_levels)
             remapped_id_path = self.dst_mask_id_dir / sub_path
@@ -131,8 +131,8 @@ class PrepareDataset:
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
     dataset = PrepareDataset(cfg)
-    dataset.build_dest_mask_id()
-    dataset.build_dest_mask_color()
+    dataset.build_dst_mask_id()
+    dataset.build_dst_mask_color()
 
 
 if __name__ == "__main__":
