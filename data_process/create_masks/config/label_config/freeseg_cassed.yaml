@@ -1,0 +1,16 @@
+src_mask_label_pattern: "CaSSeD/CaSSed_Dataset/Real_World_data/**/annotations/*.png"
+exclude_patterns:
+  - "CaSSeD/CaSSed_Dataset/Real_World_data/Test/*"
+  - "CaSSeD/CaSSed_Dataset/Real_World_data/Train/*"
+keep_subdir_levels: 3
+dst_mask_id_root: "AWF_FreeSeg_label/CaSSed/label_id"
+dst_mask_color_root: "AWF_FreeSeg_label/CaSSed/lable_color"
+overwrite_existing: true
+color_thresh: 3
+label_to_id_mapping:
+  "[155, 155, 155]":  2   # Smooth Trail     -> drivable
+  "[139, 87, 42]":    2   # Rough Trail      -> drivable
+  "[209, 255, 158]":  2   # Small Vegetation -> drivable
+  "[59, 93, 4]":      1   # Forest           -> non-drivable
+  "[184, 20, 124]":   1   # Obstacle         -> non-drivable
+  "[74, 144, 226]":   1   # Sky              -> non-drivable

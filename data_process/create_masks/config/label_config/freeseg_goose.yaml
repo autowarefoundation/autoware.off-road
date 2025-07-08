@@ -1,8 +1,10 @@
 src_mask_label_pattern: "Goose/goose_2d_train/labels/train/**/**_labelids.png"
+exclude_patterns: []
 keep_subdir_levels: 2
 dst_mask_id_root: "AWF_FreeSeg_label/Goose/label_id"
 dst_mask_color_root: "AWF_FreeSeg_label/Goose/lable_color"
-overwrite_existing: false
+overwrite_existing: true
+color_thresh: 3
 label_to_id_mapping:
   0:  0   # undefined          -> undefined
   1:  1   # traffic_cone       -> non-drivable
@@ -66,5 +68,5 @@ label_to_id_mapping:
   59: 1   # hedge              -> non-drivable 
   60: 1   # barrel             -> non-drivable 
   61: 1   # pipe               -> non-drivable 
-  62: 2   # tree_root           -> drivable 
+  62: 2   # tree_root          -> drivable 
   63: 1   # military_vehicle   -> non-drivable 

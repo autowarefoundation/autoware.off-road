@@ -1,0 +1,11 @@
+src_mask_label_pattern: "ORFD/Final_Dataset/training/gt_image/*.png"
+exclude_patterns: []
+keep_subdir_levels: 1
+dst_mask_id_root: "AWF_FreeSeg_label/ORFD/label_id"
+dst_mask_color_root: "AWF_FreeSeg_label/ORFD/label_color"
+overwrite_existing: true
+color_thresh: 3
+label_to_id_mapping:
+  0:    1   # non-drivable -> non-drivable
+  128:  1   # unreachable  -> non-drivable
+  255:  2   # drivable     -> drivable

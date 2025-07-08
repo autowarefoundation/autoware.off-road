@@ -1,5 +1,5 @@
 defaults:
-- dataset: freeseg_rellis3D
+- label_config: freeseg_rellis3D
 - color_map: freeseg
 - _self_
 

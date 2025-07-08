@@ -1,8 +1,10 @@
 src_mask_label_pattern: "Rellis_3D/Rellis_3D_pylon_camera_node_label_id/**/*.png"
+exclude_patterns: []
 keep_subdir_levels: 3
 dst_mask_id_root: "AWF_FreeSeg_label/Rellis_3D/label_id"
 dst_mask_color_root: "AWF_FreeSeg_label/Rellis_3D/label_color"
-overwrite_existing: false
+overwrite_existing: true
+color_thresh: 3
 label_to_id_mapping:
   0:  0   # void    -> undefined
   1:  2   # dirt    -> drivable
