@@ -1,0 +1,9 @@
+id_to_color_mapping:
+  0: [126, 126, 126]    # undefined    -> gray
+  1: [0, 0, 0]          # non-target   -> black
+  2: [255, 0, 0]        # person       -> red
+  3: [0, 255, 0]        # vehicle      -> green
+  4: [255, 114, 33]     # traffic_cone -> orange
+  5: [0, 0, 255]        # animal       -> blue  
+
+

@@ -1,0 +1,72 @@
+src_mask_label_pattern: "Goose/goose_2d_train/labels/train/**/**_labelids.png"
+exclude_patterns: []
+keep_subdir_levels: 2
+dst_mask_id_root: "AWF_ObjectSeg_label/Goose/label_id"
+dst_mask_color_root: "AWF_ObjectSeg_label/Goose/lable_color"
+overwrite_existing: true
+color_thresh: 3
+label_to_id_mapping:
+  0:  0   # undefined          -> undefined
+  1:  4   # traffic_cone       -> traffic_cone
+  2:  1   # snow               -> non-target
+  3:  1   # cobble             -> non-target
+  4:  1   # obstacle           -> non-target
+  5:  1   # leaves             -> non-target
+  6:  1   # street_light       -> non-target
+  7:  1   # bikeway            -> non-target
+  8:  1   # ego_vehicle        -> non-target
+  9:  1   # pedestrian_crossing-> non-target
+  10: 1   # road_block         -> non-target
+  11: 1   # road_marking       -> non-target
+  12: 3   # car                -> vehicle
+  13: 3   # bicycle            -> vehicle
+  14: 2   # person             -> person
+  15: 1   # bus                -> vehicle
+  16: 1   # forest             -> non-target
+  17: 1   # bush               -> non-target
+  18: 1   # moss               -> non-target
+  19: 1   # traffic_light      -> non-target
+  20: 3   # motorcycle         -> vehicle 
+  21: 1   # sidewalk           -> non-target
+  22: 1   # curb               -> non-target
+  23: 1   # asphalt            -> non-target
+  24: 1   # gravel             -> non-target
+  25: 1   # boom_barrier       -> non-target
+  26: 1   # rail_track         -> non-target
+  27: 1   # tree_crown         -> non-target
+  28: 1   # tree_trunk         -> non-target
+  29: 1   # debris             -> non-target
+  30: 1   # crops              -> non-target
+  31: 1   # soil               -> non-target
+  32: 2   # rider              -> person
+  33: 5   # animal             -> animal
+  34: 3   # truck              -> vehicle
+  35: 1   # on_rails           -> non-target
+  36: 3   # caravan            -> vehicle
+  37: 3   # trailer            -> vehicle
+  38: 1   # building           -> non-target
+  39: 1   # wall               -> non-target
+  40: 1   # rock               -> non-target
+  41: 1   # fence              -> non-target
+  42: 1   # guard_rail         -> non-target
+  43: 1   # bridge             -> non-target
+  44: 1   # tunnel             -> non-target
+  45: 1   # pole               -> non-target
+  46: 1   # traffic_sign       -> non-target
+  47: 1   # misc_sign          -> non-target
+  48: 1   # barrier_tape       -> non-target
+  49: 3   # kick_scooter       -> vehicle
+  50: 1   # low_grass          -> non-target
+  51: 1   # high_grass         -> non-target
+  52: 1   # scenery_vegetation -> non-target
+  53: 1   # sky                -> non-target
+  54: 1   # water              -> non-target
+  55: 1   # wire               -> non-target
+  56: 1   # outlier            -> non-target
+  57: 3   # heavy_machinery    -> vehicle 
+  58: 1   # container          -> non-target
+  59: 1   # hedge              -> non-target
+  60: 1   # barrel             -> non-target 
+  61: 1   # pipe               -> non-target
+  62: 1   # tree_root          -> non-target
+  63: 3   # military_vehicle   -> vehicle

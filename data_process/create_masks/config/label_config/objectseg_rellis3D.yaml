@@ -1,0 +1,28 @@
+src_mask_label_pattern: "Rellis_3D/Rellis_3D_pylon_camera_node_label_id/**/*.png"
+exclude_patterns: []
+keep_subdir_levels: 3
+dst_mask_id_root: "AWF_ObjectSeg_label/Rellis_3D/label_id"
+dst_mask_color_root: "AWF_ObjectSeg_label/Rellis_3D/label_color"
+overwrite_existing: true
+color_thresh: 3
+label_to_id_mapping:
+  0:  0   # void    -> undefined
+  1:  1   # dirt    -> non-target
+  3:  1   # grass   -> non-target
+  4:  1   # tree    -> non-target
+  5:  1   # pole    -> non-target
+  6:  1   # water   -> non-target
+  7:  1   # sky     -> non-target
+  8:  3   # vehicle -> vehicle
+  9:  1   # object  -> non-target
+  10: 1   # asphalt -> non-target
+  12: 1   # building-> non-target
+  15: 1   # log     -> non-target
+  17: 2   # person  -> person
+  18: 1   # fence   -> non-target
+  19: 1   # bush    -> non-target
+  23: 1   # concrete-> non-target
+  27: 1   # barrier -> non-target
+  31: 1   # puddle  -> non-target
+  33: 1   # mud     -> non-target
+  34: 1   # rubble  -> non-target
