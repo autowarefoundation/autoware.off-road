@@ -1,5 +1,6 @@
-color_map:
-  0: [0, 0, 0]            # non-drivable -> black
-  255: [255, 255, 255]    # drivable     -> white
+id_to_color_mapping:
+  0: [122, 122, 122]    # undefined    -> gray
+  1: [0, 0, 0]          # non-drivable -> black
+  2: [255, 255, 255]    # drivable     -> white
 
 

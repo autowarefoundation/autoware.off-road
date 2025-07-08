@@ -5,52 +5,49 @@ import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
+from collections import OrderedDict
 
 
 class PrepareDataset:
     def __init__(self, cfg):
         dataset_dir = Path(cfg.dataset_dir)
 
-        self.mask_id_paths = sorted(glob(str(dataset_dir / cfg.dataset.mask_id), recursive=True))
-        self.mask_color_paths = sorted(glob(str(dataset_dir / cfg.dataset.mask_color), recursive=True))
+        mask_paths = glob(str(dataset_dir / cfg.dataset.src_mask_label_pattern), recursive=True)
+        self.mask_label_paths = sorted(OrderedDict.fromkeys(mask_paths))
 
-        self.new_mask_id_dir = dataset_dir / cfg.dataset.new_mask_id
-        self.new_mask_color_dir = dataset_dir / cfg.dataset.new_mask_color
+        self.dest_mask_id_dir = dataset_dir / cfg.dataset.dst_mask_id_root
+        self.dest_mask_color_dir = dataset_dir / cfg.dataset.dst_mask_color_root
 
-        self.id_map = cfg.dataset.id_map
-        self.color_map = cfg.color_map.color_map
+        self.keep_levels = cfg.dataset.keep_subdir_levels
+        self.label_map = cfg.dataset.label_to_id_mapping
+        self.id_to_color_map = cfg.color_map.id_to_color_mapping
 
-    def get_relative_subpath(self, full_path, root_dir, drop_levels=2):
-        rel_path = Path(os.path.relpath(full_path, root_dir))
-        return Path(*rel_path.parts[drop_levels:])
+        self.overwrite = cfg.dataset.overwrite_existing
 
-    def save_mask(self, image, save_dir, sub_path):
-        full_path = save_dir / sub_path
-        full_path.parent.mkdir(parents=True, exist_ok=True)
-        if not full_path.is_file():
-            cv2.imwrite(str(full_path), image)
+    def get_relative_subpath(self, input_path, keep_levels=2):
+        # Return the last `keep_levels` components of the input path.
+        input_path = Path(input_path)
+        return Path(*input_path.parts[-keep_levels:])
 
     def remap_mask_id(self, idx):
         # Load image (grayscale or color as-is)
-        mask = cv2.imread(self.mask_id_paths[idx], cv2.IMREAD_UNCHANGED)
+        mask = cv2.imread(self.mask_label_paths[idx], cv2.IMREAD_UNCHANGED)
         if mask is None:
-            raise ValueError(f"Failed to read image at {self.mask_id_paths[idx]}")
+            raise ValueError(f"Failed to read image at {self.mask_label_paths[idx]}")
 
         is_color = len(mask.shape) == 3 and mask.shape[2] == 3
         remapped = np.zeros(mask.shape[:2], dtype=np.uint8)
 
-        for old_id, new_id in self.id_map.items():
+        for old_label, new_id in self.label_map.items():
             if is_color:
-                # Expect old_id to be a list or tuple: [R, G, B]
-                if not isinstance(old_id, (list, tuple)) or len(old_id) != 3:
-                    raise ValueError(f"Expected RGB list/tuple for color mask, got: {old_id}")
-                rgb = tuple(old_id)
+                if not isinstance(old_label, (list, tuple)) or len(old_label) != 3:
+                    raise ValueError(f"Expected RGB list/tuple for color mask, got: {old_label}")
+                rgb = tuple(old_label)
                 match = np.all(mask == rgb, axis=-1)
             else:
-                # Expect old_id to be an int for grayscale
-                if not isinstance(old_id, int):
-                    raise ValueError(f"Expected int for grayscale mask, got: {old_id}")
-                match = mask == old_id
+                if not isinstance(old_label, int):
+                    raise ValueError(f"Expected int for grayscale mask, got: {old_label}")
+                match = mask == old_label
 
             remapped[match] = new_id
 
@@ -59,50 +56,51 @@ class PrepareDataset:
     def remap_mask_color(self, mask_path):
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
         color_mask = np.zeros((*mask.shape, 3), dtype=np.uint8)
-        for class_id, rgb in self.color_map.items():
+        for class_id, rgb in self.id_to_color_map.items():
             assert len(rgb) == 3, f"Invalid RGB for class {class_id}: {rgb}"
             color_mask[mask == class_id] = rgb
-        return color_mask  # Already in RGB if your map uses RGB
+        return color_mask
 
-    def build_new_mask_id(self):
-        for i, mask_path in enumerate(self.mask_id_paths):
-            remapped = self.remap_mask_id(i)
-            sub_path = self.get_relative_subpath(mask_path, self.new_mask_id_dir)
-            self.save_mask(remapped, self.new_mask_id_dir, sub_path)
-            print(f"[mask_id] {i + 1}/{len(self.mask_id_paths)}")
+    def build_dest_mask_id(self):
+        for i, src_label_path in enumerate(self.mask_label_paths):
+            remapped_mask = self.remap_mask_id(i)
+            sub_path = self.get_relative_subpath(src_label_path, self.keep_levels)
+            save_path = self.dest_mask_id_dir / sub_path
+            save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def build_new_mask_color(self):
-        for i, original_mask_path in enumerate(self.mask_id_paths):
-            # Compute expected new mask ID path
-            sub_path = self.get_relative_subpath(original_mask_path, self.new_mask_id_dir)
-            new_mask_path = self.new_mask_id_dir / sub_path
+            if self.overwrite or not save_path.is_file():
+                cv2.imwrite(str(save_path), remapped_mask)
+                print(f"[mask_id] {i + 1}/{len(self.mask_label_paths)} - {sub_path} (saved)")
+            else:
+                print(f"[mask_id] {i + 1}/{len(self.mask_label_paths)} - {sub_path} (skipped, exists)")
 
-            if not new_mask_path.is_file():
-                print(f"Skipping: missing mask ID at {new_mask_path}")
+    def build_dest_mask_color(self):
+        for i, src_label_path in enumerate(self.mask_label_paths):
+            sub_path = self.get_relative_subpath(src_label_path, self.keep_levels)
+            remapped_id_path = self.dest_mask_id_dir / sub_path
+
+            if not remapped_id_path.is_file():
+                print(f"Skipping: missing ID mask at {remapped_id_path}")
                 continue
 
-            color_mask = self.remap_mask_color(str(new_mask_path))
+            color_mask = self.remap_mask_color(str(remapped_id_path))
+            color_mask_save_path = self.dest_mask_color_dir / sub_path
+            color_mask_save_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Use original color path just for subdirectory structure
-            color_sub_path = self.get_relative_subpath(self.mask_color_paths[i], self.new_mask_color_dir)
-            full_img_path = self.new_mask_color_dir / color_sub_path
-
-            full_img_path.parent.mkdir(parents=True, exist_ok=True)
-
-            if not full_img_path.is_file():
-                cv2.imwrite(str(full_img_path), color_mask)
-
-            print(f"[mask_color] {i + 1}/{len(self.mask_id_paths)}")
+            if self.overwrite or not color_mask_save_path.is_file():
+                cv2.imwrite(str(color_mask_save_path), color_mask)
+                print(f"[mask_color] {i + 1}/{len(self.mask_label_paths)} - {sub_path} (saved)")
+            else:
+                print(f"[mask_color] {i + 1}/{len(self.mask_label_paths)} - {sub_path} (skipped, exists)")
 
 
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
-
     dataset = PrepareDataset(cfg)
-    dataset.build_new_mask_id()
-    dataset.build_new_mask_color()
+    dataset.build_dest_mask_id()
+    dataset.build_dest_mask_color()
 
 
 if __name__ == "__main__":

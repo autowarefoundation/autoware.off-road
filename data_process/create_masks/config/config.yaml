@@ -3,4 +3,4 @@ defaults:
 - color_map: freeseg
 - _self_
 
-dataset_dir: /media/autoware/PoPoSSD/off-road_datasets/
+dataset_dir: /home/autoware/off-road_datasets/
