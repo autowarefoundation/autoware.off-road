@@ -10,7 +10,7 @@ callbacks:
     monitor: val_miou
     mode: max
     save_top_k: 5
-    save_last: true
+    save_last: True
     filename: segformer-{epoch:02d}-{val_miou:.4f}
 
   lr_monitor:

@@ -5,6 +5,6 @@ optimizer:
 
 scheduler:
   _target_: torch.optim.lr_scheduler.PolynomialLR
-  _partial_: true  
+  _partial_: True  
   total_iters: 160000
   power: 1.0

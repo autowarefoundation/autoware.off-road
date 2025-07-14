@@ -3,9 +3,89 @@ root: /home/autokarthik/autoware.off-road/goose-dataset
 label_mapping_path: goose_label_mapping.csv
 batch_size: 4
 num_workers: 8
-num_classes: 64
-img_size: [224, 224]   
+num_classes: 12
+img_size: [512, 512]   
 scale_base: [2048, 512]
 ratio_range: [0.5, 2.0]
-mean: [123.675, 116.28, 103.53]
-std:  [58.395,  57.12,  57.375]
+mean: [90.2385, 87.1299, 86.4322]
+std:  [70.8920, 70.4598, 72.6731]
+# Each index corresponds to the fine class index (0–63), value is the superclass index (0–11)
+fine_to_superclass: [
+  7,  # undefined
+  8,  # traffic_cone
+  1,  # snow
+  1,  # cobble
+  6,  # obstacle
+  0,  # leaves
+  6,  # street_light
+  5,  # bikeway
+  7,  # ego_vehicle
+  5,  # pedestrian_crossing
+  8,  # road_block
+  5,  # road_marking
+  4,  # car
+  4,  # bicycle
+  11, # person
+  4,  # bus
+  0,  # forest
+  0,  # bush
+  0,  # moss
+  8,  # traffic_light
+  4,  # motorcycle
+  5,  # sidewalk
+  5,  # curb
+  1,  # asphalt
+  1,  # gravel
+  8,  # boom_barrier
+  5,  # rail_track
+  0,  # tree_crown
+  0,  # tree_trunk
+  7,  # debris
+  0,  # crops
+  1,  # soil
+  11, # rider
+  10, # animal
+  4,  # truck
+  4,  # on_rails
+  4,  # caravan
+  4,  # trailer
+  3,  # building
+  3,  # wall
+  6,  # rock
+  3,  # fence
+  3,  # guard_rail
+  3,  # bridge
+  3,  # tunnel
+  6,  # pole
+  8,  # traffic_sign
+  8,  # misc_sign
+  8,  # barrier_tape
+  4,  # kick_scooter
+  0,  # low_grass
+  0,  # high_grass
+  0,  # scenery_vegetation
+  2,  # sky
+  9,  # water
+  3,  # wire
+  7,  # outlier
+  4,  # heavy_machinery
+  3,  # container
+  0,  # hedge
+  6,  # barrel
+  6,  # pipe
+  0,  # tree_root
+  4,  # military_vehicle
+]
+superclass_colors:
+  - [128, 150, 147]   # vegetation
+  - [255, 215, 255]   # terrain
+  - [183, 121, 164]   # sky
+  - [15, 51, 181]     # construction
+  - [153, 121, 215]   # vehicle
+  - [122, 73, 0]      # road
+  - [255, 74, 70]     # object
+  - [120, 141, 120]   # void
+  - [194, 255, 153]   # sign
+  - [122, 135, 161]   # water
+  - [0, 0, 53]        # animal
+  - [221, 239, 255]   # person/rider

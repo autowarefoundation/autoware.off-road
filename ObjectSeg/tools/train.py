@@ -9,6 +9,7 @@ from models.segformer.segformer import LitSegFormer
 from datamodule.goose_dataset import GooseDataset
 from lightning.pytorch.utilities import rank_zero_only
 from models.segformer.segformer import LitSegFormer  
+from tools.utils import launch_mlflow_ui
 
 @hydra.main(config_path="/home/autokarthik/autoware.off-road/ObjectSeg/configs", config_name="config", version_base="1.3")
 def main(cfg):
@@ -19,13 +20,15 @@ def main(cfg):
 
         dm   = hu.instantiate(loop_cfg.datamodule)
         lit  = hu.instantiate(loop_cfg.model)
-        
+
 
         callbacks = [hu.instantiate(c) for c in loop_cfg.callbacks.values()]
         logger    = None
         
         if rank_zero_only.rank == 0:
             logger = hu.instantiate(loop_cfg.logger)
+            tracking_dir = loop_cfg.logger.tracking_uri.split("file:")[1]
+            launch_mlflow_ui(log_dir=tracking_dir)
             logger.log_hyperparams(OmegaConf.to_container(loop_cfg, resolve=True))
             logger.log_graph(lit)
 

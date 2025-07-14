@@ -54,8 +54,7 @@ def get_mean_std(dataset):
     psum_sq  = torch.zeros(3)
     n_pixels = 0
     for i in tqdm(range(len(dataset))):
-        sample = dataset[i]
-        img_t = sample["image"]
+        img_t,_ = dataset[i]
         psum += img_t.sum(dim=(1, 2))
         psum_sq += (img_t ** 2).sum(dim=(1, 2))
         n_pixels += img_t.shape[1] * img_t.shape[2]
@@ -75,16 +74,21 @@ def build_segformer_train_augs(
 ):
 
     long, short = scale_base
-    augments = A.Compose([
-        A.LongestMaxSize(max_size=long, interpolation=1),
-        A.SmallestMaxSize(max_size=short, interpolation=1),
-        A.RandomScale(scale_limit=(ratio_range[0]-1.0, ratio_range[1]-1.0), p=1.0),
+    # Ensure the smallest dimension is at least as large as the crop size
+    min_size = max(crop_size[0], crop_size[1])
+    augments = A.Compose(
+    [   A.LongestMaxSize(max_size=long),
+        A.SmallestMaxSize(max_size=max(short, min_size)),  # Ensure minimum size is at least crop size
         A.RandomCrop(width=crop_size[0], height=crop_size[1]),
         A.HorizontalFlip(p=0.5),
-        A.RandomBrightnessContrast(brightness_limit=0.4, contrast_limit=0.4, p=0.5),
-        A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=20, val_shift_limit=20, p=0.5),
+        A.RandomBrightnessContrast(0.4, 0.4, p=0.5),
+        A.HueSaturationValue(10, 10, 10, p=0.5),
+        A.Resize(height=512, width=512),  # Ensure final size is 512x512
         A.Normalize(mean=mean, std=std, max_pixel_value=255.0),
         ToTensorV2()
-    ], additional_targets={"mask": "mask"})
+    ],
+    additional_targets={"mask": "mask"},
+)
+
 
     return augments
