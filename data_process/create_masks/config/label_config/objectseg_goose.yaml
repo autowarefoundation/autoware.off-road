@@ -1,72 +1,72 @@
-src_mask_label_pattern: "Goose/goose_2d_train/labels/train/**/**_labelids.png"
-exclude_patterns: []
-keep_subdir_levels: 2
-dst_mask_id_root: "AWF_ObjectSeg_label/Goose/label_id"
-dst_mask_color_root: "AWF_ObjectSeg_label/Goose/lable_color"
-overwrite_existing: true
+src_image_pattern: "Goose/**/**_vis.png"
+src_gt_mask_pattern: "Goose/**/**_labelids.png"
+exclude_patterns: ["Goose/goose_2d_test/**/**.png"]
+dst_image_dir: "AORAS/ObjectSeg/Goose/Goose/images"
+dst_gt_mask_dir: "AORAS/ObjectSeg/Goose/Goose/gt_masks"
+overwrite_existing: false
 color_thresh: 3
 label_to_id_mapping:
-  0:  0   # undefined          -> undefined
-  1:  4   # traffic_cone       -> traffic_cone
-  2:  1   # snow               -> non-target
-  3:  1   # cobble             -> non-target
-  4:  1   # obstacle           -> non-target
-  5:  1   # leaves             -> non-target
-  6:  1   # street_light       -> non-target
-  7:  1   # bikeway            -> non-target
-  8:  1   # ego_vehicle        -> non-target
-  9:  1   # pedestrian_crossing-> non-target
-  10: 1   # road_block         -> non-target
-  11: 1   # road_marking       -> non-target
-  12: 3   # car                -> vehicle
-  13: 3   # bicycle            -> vehicle
-  14: 2   # person             -> person
-  15: 1   # bus                -> vehicle
-  16: 1   # forest             -> non-target
-  17: 1   # bush               -> non-target
-  18: 1   # moss               -> non-target
-  19: 1   # traffic_light      -> non-target
-  20: 3   # motorcycle         -> vehicle 
-  21: 1   # sidewalk           -> non-target
-  22: 1   # curb               -> non-target
-  23: 1   # asphalt            -> non-target
-  24: 1   # gravel             -> non-target
-  25: 1   # boom_barrier       -> non-target
-  26: 1   # rail_track         -> non-target
-  27: 1   # tree_crown         -> non-target
-  28: 1   # tree_trunk         -> non-target
-  29: 1   # debris             -> non-target
-  30: 1   # crops              -> non-target
-  31: 1   # soil               -> non-target
-  32: 2   # rider              -> person
-  33: 5   # animal             -> animal
-  34: 3   # truck              -> vehicle
-  35: 1   # on_rails           -> non-target
-  36: 3   # caravan            -> vehicle
-  37: 3   # trailer            -> vehicle
-  38: 1   # building           -> non-target
-  39: 1   # wall               -> non-target
-  40: 1   # rock               -> non-target
-  41: 1   # fence              -> non-target
-  42: 1   # guard_rail         -> non-target
-  43: 1   # bridge             -> non-target
-  44: 1   # tunnel             -> non-target
-  45: 1   # pole               -> non-target
-  46: 1   # traffic_sign       -> non-target
-  47: 1   # misc_sign          -> non-target
-  48: 1   # barrier_tape       -> non-target
-  49: 3   # kick_scooter       -> vehicle
-  50: 1   # low_grass          -> non-target
-  51: 1   # high_grass         -> non-target
-  52: 1   # scenery_vegetation -> non-target
-  53: 1   # sky                -> non-target
-  54: 1   # water              -> non-target
-  55: 1   # wire               -> non-target
-  56: 1   # outlier            -> non-target
-  57: 3   # heavy_machinery    -> vehicle 
-  58: 1   # container          -> non-target
-  59: 1   # hedge              -> non-target
-  60: 1   # barrel             -> non-target 
-  61: 1   # pipe               -> non-target
-  62: 1   # tree_root          -> non-target
-  63: 3   # military_vehicle   -> vehicle
+  0:  1   # undefined          -> background_objects
+  1:  2   # traffic_cone       -> forground_objects
+  2:  1   # snow               -> background_objects
+  3:  1   # cobble             -> background_objects
+  4:  2   # obstacle           -> forground_objects
+  5:  1   # leaves             -> background_objects
+  6:  2   # street_light       -> forground_objects
+  7:  1   # bikeway            -> background_objects
+  8:  1   # ego_vehicle        -> background_objects
+  9:  2   # pedestrian_crossing-> forground_objects
+  10: 2   # road_block         -> forground_objects
+  11: 6   # road_marking       -> road
+  12: 5   # car                -> large_mobile_vehicle
+  13: 4   # bicycle            -> small_mobile_vehicle
+  14: 3   # person             -> vulnerable_living
+  15: 5   # bus                -> large_mobile_vehicle
+  16: 1   # forest             -> background_objects
+  17: 1   # bush               -> background_objects
+  18: 1   # moss               -> background_objects
+  19: 2   # traffic_light      -> forground_objects
+  20: 4   # motorcycle         -> small_mobile_vehicle
+  21: 1   # sidewalk           -> background_objects
+  22: 1   # curb               -> background_objects
+  23: 6   # asphalt            -> road
+  24: 1   # gravel             -> background_objects
+  25: 2   # boom_barrier       -> forground_objects
+  26: 1   # rail_track         -> background_objects
+  27: 1   # tree_crown         -> background_objects
+  28: 1   # tree_trunk         -> background_objects
+  29: 1   # debris             -> background_objects
+  30: 1   # crops              -> background_objects
+  31: 1   # soil               -> background_objects
+  32: 3   # rider              -> vulnerable_living
+  33: 3   # animal             -> vulnerable_living
+  34: 5   # truck              -> large_mobile_vehicle
+  35: 1   # on_rails           -> background_objects
+  36: 5   # caravan            -> large_mobile_vehicle
+  37: 5   # trailer            -> large_mobile_vehicle
+  38: 1   # building           -> background_objects
+  39: 1   # wall               -> background_objects
+  40: 1   # rock               -> background_objects
+  41: 2   # fence              -> forground_objects
+  42: 2   # guard_rail         -> forground_objects
+  43: 1   # bridge             -> background_objects
+  44: 1   # tunnel             -> background_objects
+  45: 2   # pole               -> forground_objects
+  46: 2   # traffic_sign       -> forground_objects
+  47: 2   # misc_sign          -> forground_objects
+  48: 2   # barrier_tape       -> forground_objects
+  49: 4   # kick_scooter       -> small_mobile_vehicle
+  50: 1   # low_grass          -> background_objects
+  51: 1   # high_grass         -> background_objects
+  52: 1   # scenery_vegetation -> background_objects
+  53: 0   # sky                -> sky
+  54: 1   # water              -> background_objects
+  55: 2   # wire               -> forground_objects
+  56: 1   # outlier            -> background_objects
+  57: 5   # heavy_machinery    -> large_mobile_vehicle
+  58: 1   # container          -> background_objects
+  59: 1   # hedge              -> background_objects
+  60: 2   # barrel             -> forground_objects
+  61: 2   # pipe               -> forground_objects
+  62: 1   # tree_root          -> background_objects
+  63: 5   # military_vehicle   -> large_mobile_vehicle
