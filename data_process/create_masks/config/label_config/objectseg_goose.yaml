@@ -7,66 +7,66 @@ overwrite_existing: false
 color_thresh: 3
 label_to_id_mapping:
   0:  1   # undefined          -> background_objects
-  1:  2   # traffic_cone       -> forground_objects
-  2:  1   # snow               -> background_objects
-  3:  1   # cobble             -> background_objects
-  4:  2   # obstacle           -> forground_objects
-  5:  1   # leaves             -> background_objects
-  6:  2   # street_light       -> forground_objects
-  7:  1   # bikeway            -> background_objects
+  1:  2   # traffic_cone       -> infrastructure_objects
+  2:  15  # snow               -> snow
+  3:  8   # cobble             -> gravel
+  4:  2   # obstacle           -> infrastructure_objects
+  5:  10  # leaves             -> small vegatation
+  6:  2   # street_light       -> infrastructure_objects
+  7:  7   # bikeway            -> paved road
   8:  1   # ego_vehicle        -> background_objects
-  9:  2   # pedestrian_crossing-> forground_objects
-  10: 2   # road_block         -> forground_objects
-  11: 6   # road_marking       -> road
-  12: 5   # car                -> large_mobile_vehicle
-  13: 4   # bicycle            -> small_mobile_vehicle
-  14: 3   # person             -> vulnerable_living
-  15: 5   # bus                -> large_mobile_vehicle
-  16: 1   # forest             -> background_objects
-  17: 1   # bush               -> background_objects
-  18: 1   # moss               -> background_objects
-  19: 2   # traffic_light      -> forground_objects
+  9:  2   # pedestrian_crossing-> infrastructure_objects
+  10: 2   # road_block         -> infrastructure_objects
+  11: 7   # road_marking       -> paved road
+  12: 6   # car                -> large_mobile_vehicle
+  13: 5   # bicycle            -> small_mobile_vehicle
+  14: 4   # person             -> vulnerable_living
+  15: 6   # bus                -> large_mobile_vehicle
+  16: 11  # forest             -> large vegatation
+  17: 11  # bush               -> large vegatation
+  18: 10  # moss               -> small vegatation
+  19: 2   # traffic_light      -> infrastructure_objects
   20: 4   # motorcycle         -> small_mobile_vehicle
-  21: 1   # sidewalk           -> background_objects
-  22: 1   # curb               -> background_objects
-  23: 6   # asphalt            -> road
-  24: 1   # gravel             -> background_objects
-  25: 2   # boom_barrier       -> forground_objects
-  26: 1   # rail_track         -> background_objects
-  27: 1   # tree_crown         -> background_objects
-  28: 1   # tree_trunk         -> background_objects
-  29: 1   # debris             -> background_objects
-  30: 1   # crops              -> background_objects
-  31: 1   # soil               -> background_objects
-  32: 3   # rider              -> vulnerable_living
-  33: 3   # animal             -> vulnerable_living
-  34: 5   # truck              -> large_mobile_vehicle
-  35: 1   # on_rails           -> background_objects
-  36: 5   # caravan            -> large_mobile_vehicle
-  37: 5   # trailer            -> large_mobile_vehicle
-  38: 1   # building           -> background_objects
-  39: 1   # wall               -> background_objects
-  40: 1   # rock               -> background_objects
-  41: 2   # fence              -> forground_objects
-  42: 2   # guard_rail         -> forground_objects
-  43: 1   # bridge             -> background_objects
-  44: 1   # tunnel             -> background_objects
-  45: 2   # pole               -> forground_objects
-  46: 2   # traffic_sign       -> forground_objects
-  47: 2   # misc_sign          -> forground_objects
-  48: 2   # barrier_tape       -> forground_objects
+  21: 7   # sidewalk           -> paved road
+  22: 7   # curb               -> paved road
+  23: 7   # asphalt            -> paved road
+  24: 8   # gravel             -> gravel
+  25: 2   # boom_barrier       -> infrastructure_objects
+  26: 8   # rail_track         -> gravel
+  27: 11  # tree_crown         -> large vegatation
+  28: 11  # tree_trunk         -> large vegatation
+  29: 11  # debris             -> large vegatation
+  30: 11  # crops              -> large vegatation
+  31: 12  # soil               -> dirt
+  32: 4   # rider              -> vulnerable_living
+  33: 4   # animal             -> vulnerable_living
+  34: 6   # truck              -> large_mobile_vehicle
+  35: 8   # on_rails           -> gravel
+  36: 6   # caravan            -> large_mobile_vehicle
+  37: 6   # trailer            -> large_mobile_vehicle
+  38: 3   # building           -> building
+  39: 3   # wall               -> building
+  40: 9   # rock               -> rock
+  41: 2   # fence              -> infrastructure_objects
+  42: 2   # guard_rail         -> infrastructure_objects
+  43: 2   # bridge             -> infrastructure_objects
+  44: 2   # tunnel             -> infrastructure_objects
+  45: 2   # pole               -> infrastructure_objects
+  46: 2   # traffic_sign       -> infrastructure_objects
+  47: 2   # misc_sign          -> infrastructure_objects
+  48: 2   # barrier_tape       -> infrastructure_objects
   49: 4   # kick_scooter       -> small_mobile_vehicle
-  50: 1   # low_grass          -> background_objects
-  51: 1   # high_grass         -> background_objects
-  52: 1   # scenery_vegetation -> background_objects
+  50: 10  # low_grass          -> small vegatation
+  51: 10  # high_grass         -> small vegatation
+  52: 11  # scenery_vegetation -> large vegatation
   53: 0   # sky                -> sky
-  54: 1   # water              -> background_objects
-  55: 2   # wire               -> forground_objects
+  54: 13  # water              -> water
+  55: 2   # wire               -> infrastructure_objects
   56: 1   # outlier            -> background_objects
-  57: 5   # heavy_machinery    -> large_mobile_vehicle
-  58: 1   # container          -> background_objects
-  59: 1   # hedge              -> background_objects
-  60: 2   # barrel             -> forground_objects
-  61: 2   # pipe               -> forground_objects
-  62: 1   # tree_root          -> background_objects
-  63: 5   # military_vehicle   -> large_mobile_vehicle
+  57: 6   # heavy_machinery    -> large_mobile_vehicle
+  58: 2   # container          -> infrastructure_objects
+  59: 11  # hedge              -> large vegatation
+  60: 2   # barrel             -> infrastructure_objects
+  61: 2   # pipe               -> infrastructure_objects
+  62: 10  # tree_root          -> small vegatation
+  63: 6   # military_vehicle   -> large_mobile_vehicle

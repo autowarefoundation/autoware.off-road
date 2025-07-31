@@ -1,9 +1,9 @@
-src_mask_label_pattern: "Goose/goose_2d_train/labels/train/**/**_labelids.png"
-exclude_patterns: []
-keep_subdir_levels: 2
-dst_mask_id_root: "AWF_FreeSeg_label/Goose/label_id"
-dst_mask_color_root: "AWF_FreeSeg_label/Goose/lable_color"
-overwrite_existing: true
+src_image_pattern: "Goose/**/**_vis.png"
+src_gt_mask_pattern: "Goose/**/**_labelids.png"
+exclude_patterns: ["Goose/goose_2d_test/**/**.png"]
+dst_image_dir: "AORAS/FreeSeg/Goose/Goose/images"
+dst_gt_mask_dir: "AORAS/FreeSeg/Goose/Goose/gt_masks"
+overwrite_existing: false
 color_thresh: 3
 label_to_id_mapping:
   0:  0   # undefined          -> undefined
@@ -32,7 +32,7 @@ label_to_id_mapping:
   23: 2   # asphalt            -> drivable
   24: 2   # gravel             -> drivable
   25: 1   # boom_barrier       -> non-drivable
-  26: 1   # rail_track         -> non-drivable
+  26: 1   # rail_track         -> drivable
   27: 1   # tree_crown         -> non-drivable
   28: 1   # tree_trunk         -> non-drivable
   29: 1   # debris             -> non-drivable
@@ -41,7 +41,7 @@ label_to_id_mapping:
   32: 1   # rider              -> non-drivable
   33: 1   # animal             -> non-drivable
   34: 1   # truck              -> non-drivable
-  35: 1   # on_rails           -> non-drivable
+  35: 1   # on_rails           -> drivable
   36: 1   # caravan            -> non-drivable
   37: 1   # trailer            -> non-drivable
   38: 1   # building           -> non-drivable
@@ -58,9 +58,9 @@ label_to_id_mapping:
   49: 1   # kick_scooter       -> non-drivable
   50: 2   # low_grass          -> drivable
   51: 2   # high_grass         -> drivable
-  52: 2   # scenery_vegetation -> drivable
+  52: 2   # scenery_vegetation -> non-drivable
   53: 1   # sky                -> non-drivable
-  54: 2   # water              -> drivable
+  54: 2   # water              -> non-drivable
   55: 1   # wire               -> non-drivable 
   56: 1   # outlier            -> non-drivable 
   57: 1   # heavy_machinery    -> non-drivable 
