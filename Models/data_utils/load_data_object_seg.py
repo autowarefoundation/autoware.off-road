@@ -144,36 +144,9 @@ class LoadDataObjectSeg:
 
         return ground_truth, class_weights
 
-    def extractROI(self, input_image, input_label):  # TODO
-        pass
-        # if(self.dataset == 'ACDC'):
-        #     input_image = input_image.crop((0, 0, 1919, 990))
-        #     input_label = input_label.crop((0, 0, 1919, 990))
-        # elif(self.dataset == 'BDD100K'):
-        #     input_image = input_image.crop((0, 0, 1000, 500))
-        #     input_label = input_label.crop((0, 0, 1000, 500))
-        # elif(self.dataset == 'IDDAW'):
-        #     input_image = input_image.crop((0, 476, 2047, 1500))
-        #     input_label = input_label.crop((0, 476, 2047, 1500))
-        # elif(self.dataset == 'MUSES'):
-        #     input_image = input_image.crop((0, 0, 1919, 918))
-        #     input_label = input_label.crop((0, 0, 1919, 918))
-        # elif(self.dataset == 'COMMA10K'):
-        #     input_image_height = input_image.height
-        #     input_image_width = input_image.width
-        #     input_image = input_image.crop((0, 0, \
-        #         input_image_width-1, int(input_image_height*(0.7))))
-        #     input_label = input_label.crop((0, 0, \
-        #         input_image_width-1, int(input_image_height*(0.7))))
-
-        # return input_image, input_label
-
     def getItemTrain(self, index):
         self.train_image = Image.open(str(self.train_images[index]))
         self.train_label = Image.open(str(self.train_labels[index]))
-
-        self.train_image, self.train_label = \
-            self.extractROI(self.train_image, self.train_label)
         self.train_ground_truth, self.train_class_weights = \
             self.createGroundTruth(self.train_label)
 
@@ -186,9 +159,6 @@ class LoadDataObjectSeg:
     def getItemVal(self, index):
         self.val_image = Image.open(str(self.val_images[index]))
         self.val_label = Image.open(str(self.val_labels[index]))
-
-        self.val_image, self.val_label = \
-            self.extractROI(self.val_image, self.val_label)
         self.val_ground_truth, self.val_class_weights = \
             self.createGroundTruth(self.val_label)
 
