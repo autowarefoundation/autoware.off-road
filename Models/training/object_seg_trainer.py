@@ -9,11 +9,11 @@ import sys
 sys.path.append('..')
 from data_utils.augmentations import Augmentations
 from model_components.object_seg_network import ObjectSegNetwork
+from model_components.scene_seg_network import SceneSegNetwork
 
 
 class ObjectSegTrainer():
-    def __init__(self, checkpoint_path='', size=''):
-
+    def __init__(self, checkpoint_path='', pretrained_checkpoint_path='', is_pretrained=False):
         self.image = 0
         self.image_val = 0
         self.gt = 0
@@ -39,12 +39,38 @@ class ObjectSegTrainer():
             'cuda' if torch.cuda.is_available() else 'cpu')
         print(f'Using {self.device} for inference')
 
-        # Instantiate model
-        self.model = ObjectSegNetwork()
+        if is_pretrained:
+            # Instantiate Model for validation or inference - load both pre-traiend SceneSeg and SuperDepth weights
+            if len(checkpoint_path) > 0:
+                # Loading model with full pre-trained weights
+                sceneSegNetwork = SceneSegNetwork()
+                self.model = ObjectSegNetwork(sceneSegNetwork)
 
-        if len(self.checkpoint_path) > 0:
-            self.model.load_state_dict(torch.load
-                                       (self.checkpoint_path, weights_only=True))
+                # If the model is also pre-trained then load the pre-trained downstream weights
+                self.model.load_state_dict(torch.load
+                                           (checkpoint_path, weights_only=True, map_location=self.device))
+                print(
+                    'Loading pre-trained model weights of ObjectSeg and upstream SceneSeg weights as well')
+            else:
+                raise ValueError(
+                    'Please ensure ObjectSeg network weights are provided for downstream elements')
+        else:
+            # Instantiate Model for training - load pre-traiend SceneSeg weights only
+            if len(pretrained_checkpoint_path) > 0:
+                # Loading SceneSeg pre-trained for upstream weights
+                sceneSegNetwork = SceneSegNetwork()
+                sceneSegNetwork.load_state_dict(torch.load
+                                                (pretrained_checkpoint_path, weights_only=True, map_location=self.device))
+
+                # Loading model with pre-trained upstream weights
+                self.model = ObjectSegNetwork(sceneSegNetwork)
+                print(
+                    'Loading pre-trained model weights of upstream SceneSeg only, ObjectSeg initialised with random weights')
+            else:
+                raise ValueError(
+                    'Please ensure SceneSeg network weights are provided for upstream elements')
+
+        # Model to device
         self.model = self.model.to(self.device)
 
         # TensorBoard
