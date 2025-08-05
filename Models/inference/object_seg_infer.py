@@ -5,6 +5,7 @@ from torchvision import transforms
 import sys
 sys.path.append('..')
 from model_components.object_seg_network import ObjectSegNetwork
+from model_components.scene_seg_network import SceneSegNetwork
 
 
 class ObjectSegNetworkInfer():
@@ -25,7 +26,8 @@ class ObjectSegNetworkInfer():
         print(f'Using {self.device} for inference')
 
         # Instantiate model, load to device and set to evaluation mode
-        self.model = ObjectSegNetwork()
+        sceneSegNetwork = SceneSegNetwork()
+        self.model = ObjectSegNetwork(sceneSegNetwork)
 
         if len(checkpoint_path) > 0:
             self.model.load_state_dict(torch.load
