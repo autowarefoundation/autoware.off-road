@@ -8,12 +8,11 @@ from pathlib import Path
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-
 class PrepareDataset:
     def __init__(self, cfg):
+        self.cfg = cfg 
         dataset_dir = Path(cfg.dataset_dir)
 
-        # Image and mask path patterns
         image_paths = glob(str(dataset_dir / cfg.label_config.src_image_pattern), recursive=True)
         mask_paths = glob(str(dataset_dir / cfg.label_config.src_gt_mask_pattern), recursive=True)
 
@@ -28,20 +27,25 @@ class PrepareDataset:
                 if not any(fnmatch(str(Path(p).relative_to(dataset_dir)), pat) for pat in exclude_patterns)
             ]
 
-        self.image_paths = sorted(OrderedDict.fromkeys(image_paths))
-        self.mask_label_paths = sorted(OrderedDict.fromkeys(mask_paths))
+        filename_mapping = cfg.label_config.get("filename_mapping", {})
+
+        image_stem_to_path = {self.apply_mapping(Path(p).stem): p for p in image_paths}
+        mask_stem_to_path = {self.apply_mapping(Path(p).stem): p for p in mask_paths}
+
+        common_stems = set(image_stem_to_path.keys()) & set(mask_stem_to_path.keys())
+
+        self.image_paths = sorted(OrderedDict.fromkeys([image_stem_to_path[s] for s in common_stems]))
+        self.mask_label_paths = sorted(OrderedDict.fromkeys([mask_stem_to_path[s] for s in common_stems]))
 
         self.dst_image_dir = dataset_dir / cfg.label_config.dst_image_dir
         self.dst_gt_mask_dir = dataset_dir / cfg.label_config.dst_gt_mask_dir
 
         self.label_map = self._parse_label_map(cfg.label_config.label_to_id_mapping)
         self.id_to_color_map = cfg.color_map.id_to_color_mapping
-
         self.overwrite = cfg.label_config.overwrite_existing
         self.color_thresh = cfg.label_config.color_thresh
 
     def _parse_label_map(self, raw_map):
-        """Convert stringified RGB keys to tuples; keep integers as-is."""
         parsed = {}
         for key, value in raw_map.items():
             if isinstance(key, str) and key.startswith("[") and key.endswith("]"):
@@ -54,9 +58,20 @@ class PrepareDataset:
             parsed[key] = value
         return parsed
 
+    def apply_mapping(self, stem):
+        filename_mapping = self.cfg.label_config.get("filename_mapping", {})
+
+        for src, tgt in filename_mapping.items():
+            if src in stem:
+                stem = stem.replace(src, tgt)
+        return stem
+
     def build_dst_image_copy(self):
+        filename_mapping = self.cfg.label_config.get("filename_mapping", {})
+
         for i, src_path in enumerate(self.image_paths):
-            dst_filename = Path(src_path).stem + ".png"
+            remapped_stem = self.apply_mapping(Path(src_path).stem)
+            dst_filename = remapped_stem + ".png"
             dst_path = self.dst_image_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -73,8 +88,11 @@ class PrepareDataset:
             print(f"[image_copy] {i+1}/{len(self.image_paths)} - {dst_path.name} (saved)")
 
     def build_dst_mask_color(self):
+        filename_mapping = self.cfg.label_config.get("filename_mapping", {})
+
         for i, src_path in enumerate(self.mask_label_paths):
-            dst_filename = Path(src_path).stem + ".png"
+            remapped_stem = self.apply_mapping(Path(src_path).stem)
+            dst_filename = remapped_stem + ".png"
             dst_path = self.dst_gt_mask_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
