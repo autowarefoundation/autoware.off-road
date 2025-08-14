@@ -5,7 +5,7 @@ import numpy as np
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from fnmatch import fnmatch
 
 class PrepareDataset:
@@ -34,24 +34,52 @@ class PrepareDataset:
 
         filename_mapping = cfg.label_config.get("filename_mapping", {})
 
-        image_stem_to_path = {self.apply_mapping(Path(p).stem): p for p in image_paths}
-        mask_stem_to_path = {self.apply_mapping(Path(p).stem): p for p in mask_paths}
+        image_stem_to_paths = self.make_unique_paths(image_paths, self.apply_mapping)
+        mask_stem_to_paths = self.make_unique_paths(mask_paths, self.apply_mapping)
 
-        common_stems = set(image_stem_to_path.keys()) & set(mask_stem_to_path.keys())
+        common_stems = set(image_stem_to_paths.keys()) & set(mask_stem_to_paths.keys())
 
         self.dataset = cfg.label_config.dataset
-        self.image_paths = sorted(OrderedDict.fromkeys([image_stem_to_path[s] for s in common_stems]))
-        self.mask_label_paths = sorted(OrderedDict.fromkeys([mask_stem_to_path[s] for s in common_stems]))
+        self.image_paths = sorted([image_stem_to_paths[s] for s in common_stems])
+        self.mask_label_paths = sorted([mask_stem_to_paths[s] for s in common_stems])
 
         self.dst_image_dir = dataset_dir / cfg.label_config.dst_image_dir
         self.dst_gt_mask_dir = dataset_dir / cfg.label_config.dst_gt_mask_dir
 
-        self.label_map = self._parse_label_map(cfg.label_config.label_to_id_mapping)
+        self.label_map = self.parse_label_map(cfg.label_config.label_to_id_mapping)
         self.id_to_color_map = cfg.color_map.id_to_color_mapping
         self.overwrite = cfg.label_config.overwrite_existing
         self.color_thresh = cfg.label_config.color_thresh
 
-    def _parse_label_map(self, raw_map):
+    def make_unique_paths(self, paths, apply_mapping):
+        """
+        Returns dict: stem -> (original_path, updated_path)
+        original_path: Path to read from
+        updated_path: Path with unique stem to use for output naming
+        """
+        stem_counts = defaultdict(int)
+        stem_to_paths = {}
+
+        for p in paths:
+            p = Path(p)
+            stem = apply_mapping(p.stem)
+
+            if stem in stem_to_paths:
+                while True:
+                    new_stem = f"{stem}_{stem_counts[stem]:05d}"
+                    stem_counts[stem] += 1
+                    if new_stem not in stem_to_paths:
+                        updated_path = p.with_name(f"{new_stem}{p.suffix}")
+                        stem_to_paths[new_stem] = (p, updated_path)
+                        break
+            else:
+                updated_path = p.with_name(f"{stem}{p.suffix}")
+                stem_to_paths[stem] = (p, updated_path)
+                stem_counts[stem] = 0
+
+        return stem_to_paths
+
+    def parse_label_map(self, raw_map):
         parsed = {}
         for key, value in raw_map.items():
             if isinstance(key, str) and key.startswith("[") and key.endswith("]"):
@@ -73,19 +101,18 @@ class PrepareDataset:
         return stem
 
     def build_dst_image_copy(self):
-        for i, src_path in enumerate(self.image_paths):
-            remapped_stem = self.apply_mapping(Path(src_path).stem)
-            dst_filename = remapped_stem + ".png"
+        for i, (src_path, updated_path) in enumerate(self.image_paths):
+            dst_filename = updated_path.stem + ".png"
             dst_path = self.dst_image_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-            prefix = f"[{self.dataset}]"
+            prefix = f"{self.dataset}"
 
             if not self.overwrite and dst_path.is_file():
                 print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - {dst_path.name} (skipped)")
                 continue
 
-            img = cv2.imread(src_path, cv2.IMREAD_UNCHANGED)
+            img = cv2.imread(str(src_path), cv2.IMREAD_UNCHANGED)
             if img is None:
                 print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - Failed to read: {src_path}")
                 continue
@@ -93,16 +120,16 @@ class PrepareDataset:
             cv2.imwrite(str(dst_path), img)
             print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - {dst_path.name} (saved)")
 
+
     def build_dst_mask_color(self):
-        for i, src_path in enumerate(self.mask_label_paths):
-            remapped_stem = self.apply_mapping(Path(src_path).stem)
-            dst_filename = remapped_stem + ".png"
+        for i, (src_path, updated_path) in enumerate(self.mask_label_paths):
+            dst_filename = updated_path.stem + ".png"
             dst_path = self.dst_gt_mask_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-            prefix = f"[{self.dataset}]"
+            prefix = f"{self.dataset}"
 
-            mask = cv2.imread(src_path, cv2.IMREAD_UNCHANGED)
+            mask = cv2.imread(str(src_path), cv2.IMREAD_UNCHANGED)
             if mask is None:
                 print(f"{prefix}: mask_color {i+1}/{len(self.mask_label_paths)} - Failed to read: {src_path}")
                 continue
