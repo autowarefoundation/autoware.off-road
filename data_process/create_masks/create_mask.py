@@ -13,6 +13,11 @@ class PrepareDataset:
         self.cfg = cfg 
         dataset_dir = Path(cfg.dataset_dir)
 
+        if not dataset_dir.is_dir():
+            raise FileNotFoundError(
+                f"dataset directory not found: {dataset_dir}"
+            )
+
         image_paths = glob(str(dataset_dir / cfg.label_config.src_image_pattern), recursive=True)
         mask_paths = glob(str(dataset_dir / cfg.label_config.src_gt_mask_pattern), recursive=True)
 
@@ -34,6 +39,7 @@ class PrepareDataset:
 
         common_stems = set(image_stem_to_path.keys()) & set(mask_stem_to_path.keys())
 
+        self.dataset = cfg.label_config.dataset
         self.image_paths = sorted(OrderedDict.fromkeys([image_stem_to_path[s] for s in common_stems]))
         self.mask_label_paths = sorted(OrderedDict.fromkeys([mask_stem_to_path[s] for s in common_stems]))
 
@@ -67,38 +73,38 @@ class PrepareDataset:
         return stem
 
     def build_dst_image_copy(self):
-        filename_mapping = self.cfg.label_config.get("filename_mapping", {})
-
         for i, src_path in enumerate(self.image_paths):
             remapped_stem = self.apply_mapping(Path(src_path).stem)
             dst_filename = remapped_stem + ".png"
             dst_path = self.dst_image_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
+            prefix = f"[{self.dataset}]"
+
             if not self.overwrite and dst_path.is_file():
-                print(f"[image_copy] {i+1}/{len(self.image_paths)} - {dst_path.name} (skipped)")
+                print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - {dst_path.name} (skipped)")
                 continue
 
             img = cv2.imread(src_path, cv2.IMREAD_UNCHANGED)
             if img is None:
-                print(f"[image_copy] {i+1}/{len(self.image_paths)} - Failed to read: {src_path}")
+                print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - Failed to read: {src_path}")
                 continue
 
             cv2.imwrite(str(dst_path), img)
-            print(f"[image_copy] {i+1}/{len(self.image_paths)} - {dst_path.name} (saved)")
+            print(f"{prefix}: copy_image {i+1}/{len(self.image_paths)} - {dst_path.name} (saved)")
 
     def build_dst_mask_color(self):
-        filename_mapping = self.cfg.label_config.get("filename_mapping", {})
-
         for i, src_path in enumerate(self.mask_label_paths):
             remapped_stem = self.apply_mapping(Path(src_path).stem)
             dst_filename = remapped_stem + ".png"
             dst_path = self.dst_gt_mask_dir / dst_filename
             dst_path.parent.mkdir(parents=True, exist_ok=True)
 
+            prefix = f"[{self.dataset}]"
+
             mask = cv2.imread(src_path, cv2.IMREAD_UNCHANGED)
             if mask is None:
-                print(f"[mask_color] {i+1}/{len(self.mask_label_paths)} - Failed to read: {src_path}")
+                print(f"{prefix}: mask_color {i+1}/{len(self.mask_label_paths)} - Failed to read: {src_path}")
                 continue
 
             is_color = len(mask.shape) == 3 and mask.shape[2] in (3, 4)
@@ -124,9 +130,9 @@ class PrepareDataset:
 
             if self.overwrite or not dst_path.is_file():
                 cv2.imwrite(str(dst_path), cv2.cvtColor(color_mask, cv2.COLOR_RGB2BGR))
-                print(f"[mask_color] {i+1}/{len(self.mask_label_paths)} - {dst_path.name} (saved)")
+                print(f"{prefix}: mask_color {i+1}/{len(self.mask_label_paths)} - {dst_path.name} (saved)")
             else:
-                print(f"[mask_color] {i+1}/{len(self.mask_label_paths)} - {dst_path.name} (skipped)")
+                print(f"{prefix}: mask_color {i+1}/{len(self.mask_label_paths)} - {dst_path.name} (skipped)")
 
 
 @hydra.main(config_path="config", config_name="config", version_base="1.3")
