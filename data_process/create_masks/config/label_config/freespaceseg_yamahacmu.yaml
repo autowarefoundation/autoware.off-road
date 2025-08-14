@@ -1,0 +1,19 @@
+dataset: "Yamaha_CMU"
+src_image_pattern: "Yamaha_CMU/**/rgb.jpg"
+src_gt_mask_pattern: "Yamaha_CMU/**/labels.png"
+exclude_patterns: []
+dst_image_dir: "AORAS/FreespaceSeg/Yamaha_CMU/Yamaha_CMU/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/Yamaha_CMU/Yamaha_CMU/gt_masks"
+filename_mapping:
+  "labels": "rgb"
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  "[255, 255, 255]": 0   # unknown           -> background
+  "[1, 88, 255]":    0   # sky               -> background
+  "[178, 176, 153]": 2   # smooth trail      -> drivable
+  "[156, 76, 30]":   2   # rough trail       -> drivable
+  "[128, 255, 0]":   1   # grass             -> object
+  "[0, 160, 0]":     1   # low vegatation    -> object
+  "[40, 80, 0]":     1   # high vegatation   -> object
+  "[255, 0, 0]":     1   # obstacle          -> object

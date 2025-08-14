@@ -1,0 +1,4 @@
+id_to_color_mapping:
+  0:  [61, 93, 255]     # background    -> blue
+  1:  [255, 28, 145]    # objects       -> pink
+  2:  [0, 255, 220]     # drivable      -> Cyan

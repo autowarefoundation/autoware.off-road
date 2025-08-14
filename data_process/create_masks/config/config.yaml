@@ -1,6 +1,6 @@
 defaults:
-- label_config: freeseg_rellis3D
-- color_map: freeseg
+- label_config: freespaceseg_rellis3d
+- color_map: freespaceseg
 - _self_
 
 dataset_dir: /home/autoware/off-road_datasets/

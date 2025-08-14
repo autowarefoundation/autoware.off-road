@@ -1,0 +1,30 @@
+dataset: "OFFSED"
+src_image_pattern: "OFFSED/left/*.png"
+src_gt_mask_pattern: "OFFSED/devkit_offsed/SegmentationClass/*.png"
+exclude_patterns: []
+dst_image_dir: "AORAS/FreespaceSeg/OFFSED/OFFSED/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/OFFSED/OFFSED/gt_masks"
+filename_mapping: {}
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  "[0, 0, 0]":       0   # background           -> background
+  "[70, 70, 70]":    0   # building             -> background
+  "[99, 128, 52]":   1   # bush                 -> object
+  "[0, 0, 90]":      1   # camper               -> object
+  "[0, 0, 142]":     1   # car                  -> object
+  "[184, 151, 51]":  1   # crops                -> object
+  "[81, 0, 81]":     2   # drivable dirt        -> drivable
+  "[128, 64, 128]":  2   # drivable pavement    -> drivable
+  "[0, 60, 100]":    1   # excavator            -> object
+  "[24, 226, 31]":   2   # grass                -> drivable
+  "[180, 165, 180]": 1   # guard rail           -> object
+  "[44, 231, 215]":  1   # held object          -> object
+  "[175, 44, 190]":  2   # nondrivable dirt     -> drivable
+  "[244, 35, 232]":  2   # nondrivable pavement -> drivable
+  "[255, 0, 0]":     1   # obstacle             -> object
+  "[209, 43, 77]":   1   # person               -> object
+  "[70, 130, 180]":  0   # sky                  -> background
+  "[107, 142, 35]":  1   # tree                 -> object
+  "[0, 0, 70]":      1   # truck                -> object
+  "[102, 102, 156]": 1   # wall                 -> object
