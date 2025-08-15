@@ -39,28 +39,28 @@ def main():
 
     # Data paths
     # CaSSeD
-    cassed_labels_filepath = root + 'CaSSeD/gt_masks/'
-    cassed_images_filepath = root + 'CaSSeD/images/'
+    cassed_labels_filepath = root + 'CaSSeD/CaSSeD/gt_masks/'
+    cassed_images_filepath = root + 'CaSSeD/CaSSeD/images/'
 
     # Goose
-    goose_labels_fileapath = root + 'Goose/gt_masks/'
-    goose_images_fileapath = root + 'Goose/images/'
+    goose_labels_fileapath = root + 'Goose/Goose/gt_masks/'
+    goose_images_fileapath = root + 'Goose/Goose/images/'
 
     # OFFSED
-    offsed_labels_fileapath = root + 'OFFSED/gt_masks/'
-    offsed_images_fileapath = root + 'OFFSED/images/'
+    offsed_labels_fileapath = root + 'OFFSED/OFFSED/gt_masks/'
+    offsed_images_fileapath = root + 'OFFSED/OFFSED/images/'
 
     # ORFD
-    orfd_labels_fileapath = root + 'ORFD/gt_masks/'
-    orfd_images_fileapath = root + 'ORFD/images/'
+    orfd_labels_fileapath = root + 'ORFD/ORFD/gt_masks/'
+    orfd_images_fileapath = root + 'ORFD/ORFD/images/'
 
     # RELLIS3D
-    rellis3d_labels_fileapath = root + 'Rellis_3D/gt_masks/'
-    rellis3d_images_fileapath = root + 'Rellis_3D/images/'
+    rellis3d_labels_fileapath = root + 'Rellis_3D/Rellis_3D/gt_masks/'
+    rellis3d_images_fileapath = root + 'Rellis_3D/Rellis_3D/images/'
 
     # Yamaha_CMU
-    yamaha_cmu_labels_fileapath = root + 'Yamaha_CMU/gt_masks/'
-    yamaha_cmu_images_fileapath = root + 'Yamaha_CMU/images/'
+    yamaha_cmu_labels_fileapath = root + 'Yamaha_CMU/Yamaha_CMU/gt_masks/'
+    yamaha_cmu_images_fileapath = root + 'Yamaha_CMU/Yamaha_CMU/images/'
 
     # CaSSeD - Data Loading
     cassed_Dataset = LoadDataObjectSeg(
