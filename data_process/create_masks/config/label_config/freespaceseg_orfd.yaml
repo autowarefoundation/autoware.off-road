@@ -1,0 +1,14 @@
+dataset: "ORFD"
+src_image_pattern: "ORFD/**/image_data/**.png"
+src_gt_mask_pattern: "ORFD/**/gt_image/**.png"
+exclude_patterns: []
+dst_image_dir: "AORAS/FreespaceSeg/ORFD/ORFD/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/ORFD/ORFD/gt_masks"
+filename_mapping:
+  "_fillcolor": ""
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  0:    1   # non-drivable -> object
+  128:  0   # unreachable  -> background
+  255:  2   # drivable     -> drivable

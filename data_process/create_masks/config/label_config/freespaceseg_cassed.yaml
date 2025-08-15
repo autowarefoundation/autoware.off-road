@@ -1,0 +1,20 @@
+dataset: "CaSSeD"
+src_image_pattern: "CaSSeD/CaSSed_Dataset/Real_World_data/**/raw_images/*.png"
+src_gt_mask_pattern: "CaSSeD/CaSSed_Dataset/Real_World_data/**/annotations/*.png"
+exclude_patterns:  
+  - "CaSSeD/CaSSed_Dataset/Real_World_data/Test/*"
+  - "CaSSeD/CaSSed_Dataset/Real_World_data/Train/*"
+dst_image_dir: "AORAS/FreespaceSeg/CaSSeD/CaSSeD/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/CaSSeD/CaSSeD/gt_masks"
+filename_mapping:
+  "image": "rgb"
+  "screenshot_": ""
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  "[155, 155, 155]":  2  # Smooth Trail     -> drivable
+  "[139, 87, 42]":    2  # Rough Trail      -> drivable
+  "[209, 255, 158]":  2  # Small Vegetation -> drivable
+  "[59, 93, 4]":      1  # Forest           -> object
+  "[184, 20, 124]":   1  # Obstacle         -> object
+  "[74, 144, 226]":   0  # Sky              -> background

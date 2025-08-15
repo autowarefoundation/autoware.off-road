@@ -1,0 +1,76 @@
+dataset: "Goose"
+src_image_pattern: "Goose/**/**_windshield_vis.png"
+src_gt_mask_pattern: "Goose/**/**_labelids.png"
+exclude_patterns: ["Goose/goose_2d_test/**/**.png"]
+dst_image_dir: "AORAS/FreespaceSeg/Goose/Goose/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/Goose/Goose/gt_masks"
+filename_mapping:
+  "_windshield_vis": ""
+  "_labelids": ""
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  0:  0   # undefined          -> background
+  1:  1   # traffic_cone       -> object
+  2:  2   # snow               -> drivable
+  3:  2   # cobble             -> drivable
+  4:  1   # obstacle           -> object
+  5:  2   # leaves             -> drivable
+  6:  1   # street_light       -> object
+  7:  2   # bikeway            -> drivable
+  8:  0   # ego_vehicle        -> background
+  9:  1   # pedestrian_crossing-> object
+  10: 1   # road_block         -> object
+  11: 2   # road_marking       -> drivable
+  12: 1   # car                -> object
+  13: 1   # bicycle            -> object
+  14: 1   # person             -> object
+  15: 1   # bus                -> object
+  16: 1   # forest             -> object
+  17: 1   # bush               -> object
+  18: 2   # moss               -> drivable
+  19: 1   # traffic_light      -> object
+  20: 1   # motorcycle         -> object
+  21: 2   # sidewalk           -> drivable
+  22: 2   # curb               -> drivable
+  23: 2   # asphalt            -> drivable
+  24: 2   # gravel             -> drivable
+  25: 1   # boom_barrier       -> object
+  26: 2   # rail_track         -> drivable
+  27: 1   # tree_crown         -> object
+  28: 1   # tree_trunk         -> object
+  29: 1   # debris             -> object
+  30: 1   # crops              -> object
+  31: 2   # soil               -> drivable
+  32: 1   # rider              -> object
+  33: 1   # animal             -> object
+  34: 1   # truck              -> object
+  35: 1   # on_rails           -> object
+  36: 1   # caravan            -> object
+  37: 1   # trailer            -> object
+  38: 0   # building           -> background
+  39: 1   # wall               -> object
+  40: 1   # rock               -> object
+  41: 1   # fence              -> object
+  42: 1   # guard_rail         -> object
+  43: 0   # bridge             -> background
+  44: 0   # tunnel             -> background
+  45: 1   # pole               -> object
+  46: 1   # traffic_sign       -> object
+  47: 1   # misc_sign          -> object
+  48: 1   # barrier_tape       -> object
+  49: 1   # kick_scooter       -> object
+  50: 2   # low_grass          -> drivable
+  51: 1   # high_grass         -> object
+  52: 1   # scenery_vegetation -> object
+  53: 0   # sky                -> background
+  54: 0   # water              -> background
+  55: 0   # wire               -> background
+  56: 0   # outlier            -> background
+  57: 1   # heavy_machinery    -> object
+  58: 1   # container          -> object
+  59: 1   # hedge              -> object
+  60: 1   # barrel             -> object
+  61: 1   # pipe               -> object
+  62: 1   # tree_root          -> object
+  63: 1   # military_vehicle   -> object
