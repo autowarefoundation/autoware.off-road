@@ -8,10 +8,10 @@ import numpy as np
 
 class LoadDataObjectSeg:
     def __init__(self, labels_filepath, images_filepath,
-                 dataset: Literal['CASSED', 'GOOSE', 'OFFSED', 'RELLIS3D']):
+                 dataset: Literal['CaSSeD', 'Goose', 'OFFSED', 'ORFD', 'Rellis_3D', 'Yamaha_CMU']):
 
         self.dataset = dataset
-        if self.dataset not in ['CASSED', 'GOOSE', 'OFFSED', 'RELLIS3D']:
+        if self.dataset not in ['CaSSeD', 'Goose', 'OFFSED', 'ORFD', 'Rellis_3D', 'Yamaha_CMU']:
             raise ValueError('Dataset type is not correctly specified')
 
         self.labels = sorted(
