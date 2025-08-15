@@ -283,7 +283,7 @@ def main():
                 # No gradient calculation
                 with torch.no_grad():
 
-                    # CASSED
+                    # CaSSeD
                     for val_count in range(cassed_num_val_samples):
                         image_val, gt_val, _ = \
                             cassed_Dataset.getItemVal(val_count)
@@ -297,7 +297,7 @@ def main():
                         running_IoU_fg += IoU_score_fg
                         running_IoU_rd += IoU_score_rd
 
-                    # GOOSE
+                    # Goose
                     for val_count in range(goose_num_val_samples):
                         image_val, gt_val, _ = \
                             goose_Dataset.getItemVal(val_count)
@@ -324,11 +324,39 @@ def main():
                         running_IoU_bg += IoU_score_bg
                         running_IoU_fg += IoU_score_fg
                         running_IoU_rd += IoU_score_rd
+                    
+                    # ORFD
+                    for val_count in range(orfd_num_val_samples):
+                        image_val, gt_val, _ = \
+                            orfd_Dataset.getItemVal(val_count)
 
-                    # RELLIS3D
+                        # Run Validation and calculate IoU Score
+                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
+                            trainer.validate(image_val, gt_val)
+
+                        running_IoU_full += IoU_score_full
+                        running_IoU_bg += IoU_score_bg
+                        running_IoU_fg += IoU_score_fg
+                        running_IoU_rd += IoU_score_rd
+
+                    # Rellis_3D
                     for val_count in range(rellis3d_num_val_samples):
                         image_val, gt_val, _ = \
                             rellis3d_Dataset.getItemVal(val_count)
+
+                        # Run Validation and calculate IoU Score
+                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
+                            trainer.validate(image_val, gt_val)
+
+                        running_IoU_full += IoU_score_full
+                        running_IoU_bg += IoU_score_bg
+                        running_IoU_fg += IoU_score_fg
+                        running_IoU_rd += IoU_score_rd
+
+                    # Yamaha_CMU
+                    for val_count in range(yamaha_cmu_num_val_samples):
+                        image_val, gt_val, _ = \
+                            yamaha_cmu_Dataset.getItemVal(val_count)
 
                         # Run Validation and calculate IoU Score
                         IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
