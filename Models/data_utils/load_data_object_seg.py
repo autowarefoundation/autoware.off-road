@@ -145,7 +145,7 @@ class LoadDataObjectSeg:
         return ground_truth, class_weights
 
     def getItemTrain(self, index):
-        self.train_image = Image.open(str(self.train_images[index]))
+        self.train_image = Image.open(str(self.train_images[index])).convert("RGB")
         self.train_label = Image.open(str(self.train_labels[index]))
         self.train_ground_truth, self.train_class_weights = \
             self.createGroundTruth(self.train_label)
@@ -157,7 +157,7 @@ class LoadDataObjectSeg:
         return str(self.train_images[index]), str(self.train_labels[index])
 
     def getItemVal(self, index):
-        self.val_image = Image.open(str(self.val_images[index]))
+        self.val_image = Image.open(str(self.val_images[index])).convert("RGB")
         self.val_label = Image.open(str(self.val_labels[index]))
         self.val_ground_truth, self.val_class_weights = \
             self.createGroundTruth(self.val_label)
