@@ -120,27 +120,79 @@ class ObjectSegTrainer():
         self.image_val = image_val
         self.gt_val = gt_val
 
+    def encode_color_mask_to_single_channel(self, color_mask, color_map):
+        """
+        Convert a color-coded segmentation mask (H, W, 3) to a single-channel label mask (H, W).
+    
+        Args:
+            color_mask (np.ndarray): Input RGB mask of shape (H, W, 3).
+            color_map (dict): Mapping from class index to RGB color, e.g.:
+                              {0: (0, 0, 0), 1: (255, 0, 0), 2: (0, 255, 0)}
+    
+        Returns:
+            np.ndarray: Single-channel mask of shape (H, W) with class indices.
+        """
+        h, w, _ = color_mask.shape
+        single_channel = np.zeros((h, w), dtype=np.uint8)
+    
+        for class_idx, rgb in color_map.items():
+            matches = np.all(color_mask == rgb, axis=-1)
+            single_channel[matches] = class_idx
+    
+        return single_channel
+    
+    
+    def decode_single_channel_to_color_mask(self, single_channel_mask, color_map):
+        """
+        Convert a single-channel label mask (H, W) to a color-coded mask (H, W, 3).
+    
+        Args:
+            single_channel_mask (np.ndarray): Single-channel mask with class indices.
+            color_map (dict): Mapping from class index to RGB color.
+    
+        Returns:
+            np.ndarray: Color-coded mask of shape (H, W, 3).
+        """
+        h, w = single_channel_mask.shape
+        color_mask = np.zeros((h, w, 3), dtype=np.uint8)
+    
+        for class_idx, rgb in color_map.items():
+            color_mask[single_channel_mask == class_idx] = rgb
+    
+        return color_mask
+    
     # Image agumentations
     def apply_augmentations(self, is_train):
+        COLOR_MAP = {
+            0: (61, 93, 255),      # background
+            1: (255, 28, 145),     # object
+            2: (0, 255, 220)       # drivable 
+        }
         if is_train:
             # Augmenting Data for training
             augTrain = Augmentations(is_train=True, data_type='SEGMENTATION')
+            self.gt[0] = self.encode_color_mask_to_single_channel(self.gt[0], COLOR_MAP)
             augTrain.setData(self.image, self.gt)
             self.image, self.augmented,  = \
                 augTrain.applyTransformSeg(
                     image=self.image, ground_truth=self.gt)
 
+            self.gt[0] = self.decode_single_channel_to_color_mask(self.gt[0], COLOR_MAP)
+            self.augmented[0] = self.decode_single_channel_to_color_mask(self.augmented[0], COLOR_MAP)
             # Ground Truth with probabiliites for each class in separate channels
             self.gt_fused = np.stack((self.augmented[1], self.augmented[2],
                                       self.augmented[3]), axis=2)
         else:
             # Augmenting Data for testing/validation
             augVal = Augmentations(is_train=False, data_type='SEGMENTATION')
+            self.gt_val[0] = self.encode_color_mask_to_single_channel(self.gt_val[0], COLOR_MAP)
             augVal.setData(self.image_val, self.gt_val)
             self.image_val, self.augmented_val = \
                 augVal.applyTransformSeg(
                     image=self.image_val, ground_truth=self.gt_val)
 
+            self.gt_val[0] = self.decode_single_channel_to_color_mask(self.gt_val[0], COLOR_MAP)
+            self.augmented_val[0] = self.decode_single_channel_to_color_mask(self.augmented_val[0], COLOR_MAP)
             # Ground Truth with probabiliites for each class in separate channels
             self.gt_val_fused = np.stack((self.augmented_val[1], self.augmented_val[2],
                                           self.augmented_val[3]), axis=2)
