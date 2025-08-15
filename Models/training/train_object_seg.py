@@ -231,7 +231,7 @@ def main():
                 yamaha_cmu_count += 1
 
             # Assign Data
-            trainer.set_data(image, gt, class_weights)
+            trainer.set_data(image, gt[0], class_weights)
 
             # Augmenting Image
             trainer.apply_augmentations(is_train=True)

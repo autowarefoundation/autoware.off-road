@@ -62,6 +62,26 @@ class Augmentations():
 
         # ========================== Noise transforms ========================== #
 
+        self.transform_noise_ego_space = A.Compose(
+            [
+                A.PixelDropout(dropout_prob=0.25, per_channel=True, p=0.25),
+                A.MultiplicativeNoise(multiplier=(
+                    0.5, 1.5), per_channel=False, p=0.25),
+                A.Spatter(mean=(0.65, 0.65), std=(0.3, 0.3), gauss_sigma=(2, 2),
+                          cutout_threshold=(0.68, 0.68), intensity=(0.3, 0.3), mode='rain',
+                          p=0.25),
+                A.ToGray(num_output_channels=3,
+                         method='weighted_average', p=0.25),
+                A.RandomRain(p=0.25),
+                A.RandomShadow(shadow_roi=(0.2, 0.2, 0.8, 0.8), num_shadows_limit=(2, 4), shadow_dimension=8,
+                               shadow_intensity_range=(0.3, 0.7), p=0.25),
+                A.RandomGravel(gravel_roi=(0.2, 0.2, 0.8, 0.8),
+                               number_of_patches=5, p=0.25),
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.3, contrast_limit=0.5, p=0.25),
+            ]
+        )
+
         self.transform_noise = A.Compose(
             [
                 A.MultiplicativeNoise(multiplier=(
@@ -168,7 +188,7 @@ class Augmentations():
             # Random image augmentations
             if (random.random() >= 0.25 and self.is_train):
 
-                self.add_noise = self.transform_noise(
+                self.add_noise = self.transform_noise_ego_space(
                     image=self.augmented_image)
                 self.augmented_image = self.add_noise["image"]
 
