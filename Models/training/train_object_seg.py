@@ -38,74 +38,19 @@ def main():
     if(args.load_from_save):
         load_from_checkpoint = True
 
-    # Data paths
-    # CaSSeD
-    cassed_labels_filepath = root + 'CaSSeD/CaSSeD/gt_masks/'
-    cassed_images_filepath = root + 'CaSSeD/CaSSeD/images/'
+    datasets_name = ["CaSSeD", "Goose", "OFFSED", "ORFD", "Rellis_3D", "Yamaha_CMU"]
+    datasets_info = {name: {"labels": root + f"{name}/{name}/gt_masks/",
+                            "images": root + f"{name}/{name}/images/"}
+                             for name in datasets_name}
+    datasets = {name: LoadDataObjectSeg(datasets_info[name]["labels"],
+                                        datasets_info[name]["images"],
+                                        name) for name in datasets_name}
+    counts = {name: datasets[name].getItemCount() for name in datasets}
 
-    # Goose
-    goose_labels_fileapath = root + 'Goose/Goose/gt_masks/'
-    goose_images_fileapath = root + 'Goose/Goose/images/'
-
-    # OFFSED
-    offsed_labels_fileapath = root + 'OFFSED/OFFSED/gt_masks/'
-    offsed_images_fileapath = root + 'OFFSED/OFFSED/images/'
-
-    # ORFD
-    orfd_labels_fileapath = root + 'ORFD/ORFD/gt_masks/'
-    orfd_images_fileapath = root + 'ORFD/ORFD/images/'
-
-    # RELLIS3D
-    rellis3d_labels_fileapath = root + 'Rellis_3D/Rellis_3D/gt_masks/'
-    rellis3d_images_fileapath = root + 'Rellis_3D/Rellis_3D/images/'
-
-    # Yamaha_CMU
-    yamaha_cmu_labels_fileapath = root + 'Yamaha_CMU/Yamaha_CMU/gt_masks/'
-    yamaha_cmu_images_fileapath = root + 'Yamaha_CMU/Yamaha_CMU/images/'
-
-    # CaSSeD - Data Loading
-    cassed_Dataset = LoadDataObjectSeg(
-        cassed_labels_filepath, cassed_images_filepath, 'CaSSeD')
-    cassed_num_train_samples, cassed_num_val_samples = cassed_Dataset.getItemCount()
-
-    # Goose - Data Loading
-    goose_Dataset = LoadDataObjectSeg(
-        goose_labels_fileapath, goose_images_fileapath, 'Goose')
-    goose_num_train_samples, goose_num_val_samples = goose_Dataset.getItemCount()
-
-    # OFFSED - Data Loading
-    offsed_Dataset = LoadDataObjectSeg(
-        offsed_labels_fileapath, offsed_images_fileapath, 'OFFSED')
-    offsed_num_train_samples, offsed_num_val_samples = offsed_Dataset.getItemCount()
-
-    # ORFD - Data Loading
-    orfd_Dataset = LoadDataObjectSeg(
-        orfd_labels_fileapath, orfd_images_fileapath, 'ORFD')
-    orfd_num_train_samples, orfd_num_val_samples = orfd_Dataset.getItemCount()
-
-    # Rellis_3D - Data Loading
-    rellis3d_Dataset = LoadDataObjectSeg(
-        rellis3d_labels_fileapath, rellis3d_images_fileapath, 'Rellis_3D')
-    rellis3d_num_train_samples, rellis3d_num_val_samples = rellis3d_Dataset.getItemCount()
-
-    # Yamaha_CMU - Data Loading
-    yamaha_cmu_Dataset = LoadDataObjectSeg(
-        yamaha_cmu_labels_fileapath, yamaha_cmu_images_fileapath, 'Yamaha_CMU')
-    yamaha_cmu_num_train_samples, yamaha_cmu_num_val_samples = yamaha_cmu_Dataset.getItemCount()
-
-    # Total number of training samples
-    total_train_samples = cassed_num_train_samples + \
-        goose_num_train_samples + offsed_num_train_samples + \
-        orfd_num_train_samples + rellis3d_num_train_samples + \
-        yamaha_cmu_num_train_samples
-    print(total_train_samples, ': total training samples')
-
-    # Total number of validation samples
-    total_val_samples = cassed_num_val_samples + \
-        goose_num_val_samples + offsed_num_val_samples + \
-        orfd_num_val_samples + rellis3d_num_val_samples + \
-        yamaha_cmu_num_val_samples
-    print(total_val_samples, ': total validation samples')
+    total_train_samples = sum(v[0] for v in counts.values())
+    total_val_samples = sum(v[1] for v in counts.values())
+    print(total_train_samples, ": total training samples")
+    print(total_val_samples, ": total validation samples")
 
     # Pre-trained model checkpoint path
     pretrained_checkpoint_path = args.pretrained_checkpoint_path
@@ -127,27 +72,10 @@ def main():
     for epoch in range(0, num_epochs):
 
         # Iterators for datasets
-        cassed_count = 0
-        goose_count = 0
-        offsed_count = 0
-        orfd_count = 0
-        rellis3d_count = 0
-        yamaha_cmu_count = 0
+        train_counts = {name: 0 for name in datasets}
+        completed = {name: False for name in datasets}
 
-        is_cassed_complete = False
-        is_goose_complete = False
-        is_offsed_complete = False
-        is_orfd_complete = False
-        is_rellis3d_complete = False
-        is_yamaha_cmu_complete = False
-
-        data_list = []
-        data_list.append('CaSSeD')
-        data_list.append('Goose')
-        data_list.append('OFFSED')
-        data_list.append('ORFD')
-        data_list.append('Rellis_3D')
-        data_list.append('Yamaha_CMU')
+        data_list = datasets_name.copy()
         random.shuffle(data_list)
         data_list_count = 0
 
@@ -169,30 +97,11 @@ def main():
 
             log_count = count + total_train_samples*epoch
 
-            # Reset iterators
-            if cassed_count == cassed_num_train_samples and not is_cassed_complete:
-                is_cassed_complete = True
-                data_list.remove("CaSSeD")
-
-            if goose_count == goose_num_train_samples and not is_goose_complete:
-                is_goose_complete = True
-                data_list.remove("Goose")
-
-            if offsed_count == offsed_num_train_samples and not is_offsed_complete:
-                is_offsed_complete = True
-                data_list.remove('OFFSED')
-
-            if orfd_count == orfd_num_train_samples and not is_orfd_complete:
-                is_orfd_complete = True
-                data_list.remove('ORFD')
-
-            if rellis3d_count == rellis3d_num_train_samples and not is_rellis3d_complete:
-                is_rellis3d_complete = True
-                data_list.remove('Rellis_3D')
-
-            if yamaha_cmu_count == yamaha_cmu_num_train_samples and not is_yamaha_cmu_complete:
-                is_yamaha_cmu_complete = True
-                data_list.remove('Yamaha_CMU')
+            # Reset dataset iterators if exhausted
+            for name in list(data_list):
+                if train_counts[name] == counts[name][0] and not completed[name]:
+                    completed[name] = True
+                    data_list.remove(name)
 
             if data_list_count >= len(data_list):
                 data_list_count = 0
@@ -201,35 +110,9 @@ def main():
             # loss for iterated image from each dataset, and increment
             # dataset iterators
 
-            if data_list[data_list_count] == 'CaSSeD' and not is_cassed_complete:
-                image, gt, class_weights = \
-                    cassed_Dataset.getItemTrain(cassed_count)
-                cassed_count += 1
-
-            if data_list[data_list_count] == 'Goose' and not is_goose_complete:
-                image, gt, class_weights = \
-                    goose_Dataset.getItemTrain(goose_count)
-                goose_count += 1
-
-            if data_list[data_list_count] == 'OFFSED' and not is_offsed_complete:
-                image, gt, class_weights = \
-                    offsed_Dataset.getItemTrain(offsed_count)
-                offsed_count += 1
-
-            if data_list[data_list_count] == 'ORFD' and not is_orfd_complete:
-                image, gt, class_weights = \
-                    orfd_Dataset.getItemTrain(orfd_count)
-                orfd_count += 1
-
-            if data_list[data_list_count] == 'Rellis_3D' and not is_rellis3d_complete:
-                image, gt, class_weights = \
-                    rellis3d_Dataset.getItemTrain(rellis3d_count)
-                rellis3d_count += 1
-
-            if data_list[data_list_count] == 'Yamaha_CMU' and not is_yamaha_cmu_complete:
-                image, gt, class_weights = \
-                    yamaha_cmu_Dataset.getItemTrain(yamaha_cmu_count)
-                yamaha_cmu_count += 1
+            dataset_name = data_list[data_list_count]
+            image, gt, class_weights = datasets[dataset_name].getItemTrain(train_counts[dataset_name])
+            train_counts[dataset_name] += 1
 
             # Assign Data
             trainer.set_data(image, gt, class_weights)
@@ -284,89 +167,20 @@ def main():
                 # No gradient calculation
                 with torch.no_grad():
 
-                    # CaSSeD
-                    for val_count in tqdm(range(cassed_num_val_samples), desc="Validating CaSSeD"):
-                        image_val, gt_val, _ = \
-                            cassed_Dataset.getItemVal(val_count)
+                    for dataset_name in datasets_name:
+                        for val_count in tqdm(range(0, counts[dataset_name][1]),
+                                              desc=f"Validating {dataset_name}"):
+                            image_val, gt_val, _ = \
+                                datasets[dataset_name].getItemVal(val_count)
 
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
+                            # Run Validation and calculate IoU Score
+                            IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
+                                trainer.validate(image_val, gt_val)
 
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
-
-                    # Goose
-                    for val_count in tqdm(range(goose_num_val_samples), desc="Validating Goose"):
-                        image_val, gt_val, _ = \
-                            goose_Dataset.getItemVal(val_count)
-
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
-
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
-
-                    # OFFSED
-                    for val_count in tqdm(range(offsed_num_val_samples), desc="Validating OFFSED"):
-                        image_val, gt_val, _ = \
-                            offsed_Dataset.getItemVal(val_count)
-
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
-
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
-                    
-                    # ORFD
-                    for val_count in tqdm(range(orfd_num_val_samples), desc="Validating ORFD"):
-                        image_val, gt_val, _ = \
-                            orfd_Dataset.getItemVal(val_count)
-
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
-
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
-
-                    # Rellis_3D
-                    for val_count in tqdm(range(rellis3d_num_val_samples), desc="Validating Rellis_3D"):
-                        image_val, gt_val, _ = \
-                            rellis3d_Dataset.getItemVal(val_count)
-
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
-
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
-
-                    # Yamaha_CMU
-                    for val_count in tqdm(range(yamaha_cmu_num_val_samples), desc="Validating Yamaha_CMU"):
-                        image_val, gt_val, _ = \
-                            yamaha_cmu_Dataset.getItemVal(val_count)
-
-                        # Run Validation and calculate IoU Score
-                        IoU_score_full, IoU_score_bg, IoU_score_fg, IoU_score_rd = \
-                            trainer.validate(image_val, gt_val)
-
-                        running_IoU_full += IoU_score_full
-                        running_IoU_bg += IoU_score_bg
-                        running_IoU_fg += IoU_score_fg
-                        running_IoU_rd += IoU_score_rd
+                            running_IoU_full += IoU_score_full
+                            running_IoU_bg += IoU_score_bg
+                            running_IoU_fg += IoU_score_fg
+                            running_IoU_rd += IoU_score_rd
 
                     # Calculating average loss of complete validation set
                     mIoU_full = running_IoU_full/total_val_samples
