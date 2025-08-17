@@ -4,6 +4,7 @@ import torch
 from tqdm import tqdm
 import random
 from argparse import ArgumentParser
+import os
 import sys
 sys.path.append('..')
 from data_utils.load_data_object_seg import LoadDataObjectSeg
@@ -32,10 +33,11 @@ def main():
 
     # Model save path
     model_save_root_path = args.model_save_root_path
+    os.makedirs(model_save_root_path, exist_ok=True)
 
     # Load from checkpoint
     load_from_checkpoint = False
-    if(args.load_from_save):
+    if args.load_from_save:
         load_from_checkpoint = True
 
     datasets_name = ["CaSSeD", "Goose", "OFFSED", "ORFD", "Rellis_3D", "Yamaha_CMU"]
