@@ -56,19 +56,9 @@ class LoadDataObjectSeg:
 
     def createGroundTruth(self, input_label):
         # Colourmaps for classes
-        sky_colour = (61, 184, 255)
         background_objects_colour = (61, 93, 255)
-        road_edge_delimiter_colour = (216, 255, 61)
-        unlabelled_colour = (0, 0, 0)
-        vulnerable_living_colour = (255, 61, 61)
-        small_mobile_vehicle_colour = (255, 190, 61)
-        large_mobile_vehicle_colour = (255, 116, 61)
         foreground_objects_colour = (255, 28, 145)
         road_colour = (0, 255, 220)
-
-        background_colours = [background_objects_colour, road_edge_delimiter_colour, unlabelled_colour, sky_colour]
-        foreground_colours = [vulnerable_living_colour, small_mobile_vehicle_colour, large_mobile_vehicle_colour, foreground_objects_colour]
-        road_colours = [road_colour]
 
         # Convert input PIL image to NumPy array
         input_np = np.array(input_label)
@@ -76,21 +66,17 @@ class LoadDataObjectSeg:
         num_pixels = row*col
 
         # Initialize visualization and masks
-        vis = np.zeros_like(input_np, dtype=np.uint8)
+        vis = np.array(input_np, dtype=np.uint8)
         ground_truth_background = np.zeros((row, col), dtype=np.uint8)
         ground_truth_foreground = np.zeros((row, col), dtype=np.uint8)
         ground_truth_road = np.zeros((row, col), dtype=np.uint8)
 
         # Define boolean masks for classes
-        background_mask = np.isin(input_np.reshape(-1, 3), background_colours).all(axis=1).reshape(row, col)
-        foreground_mask = np.isin(input_np.reshape(-1, 3), foreground_colours).all(axis=1).reshape(row, col)
-        road_mask = np.isin(input_np.reshape(-1, 3), road_colours).all(axis=1).reshape(row, col)
+        background_mask = np.isin(input_np.reshape(-1, 3), background_objects_colour).all(axis=1).reshape(row, col)
+        foreground_mask = np.isin(input_np.reshape(-1, 3), foreground_objects_colour).all(axis=1).reshape(row, col)
+        road_mask = np.isin(input_np.reshape(-1, 3), road_colour).all(axis=1).reshape(row, col)
 
-        # Apply masks
-        vis[background_mask] = background_objects_colour
-        vis[foreground_mask] = foreground_objects_colour
-        vis[road_mask] = road_colour
-        
+        # Apply masks        
         ground_truth_background[background_mask] = 255
         ground_truth_foreground[foreground_mask] = 255
         ground_truth_road[road_mask] = 255
