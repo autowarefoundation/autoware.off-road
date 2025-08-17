@@ -284,38 +284,16 @@ class ObjectSegTrainer():
 
     # Calculate IoU score for validation
     def calc_IoU_val(self):
-        output_val = self.model(self.image_val_tensor)
-        output_val = output_val.squeeze(0).cpu().detach()
-        output_val = output_val.permute(1, 2, 0)
-        output_val = output_val.numpy()
+        output_val = self.model(self.image_val_tensor) # (1, C, H, W)
+        pred = torch.argmax(output_val, dim=1) # (1, H, W)
+        
+        one_hot = torch.nn.functional.one_hot(pred, num_classes=3).squeeze(0) # (H, W, C)
+        one_hot = one_hot.cpu().detach().numpy()
 
-        for x in range(0, output_val.shape[0]):
-            for y in range(0, output_val.shape[1]):
-
-                bg_prob = output_val[x, y, 0]
-                fg_prob = output_val[x, y, 1]
-                rd_prob = output_val[x, y, 2]
-
-                if bg_prob >= fg_prob and bg_prob >= rd_prob:
-                    output_val[x, y, 0] = 1
-                    output_val[x, y, 1] = 0
-                    output_val[x, y, 2] = 0
-                elif fg_prob >= bg_prob and fg_prob >= rd_prob:
-                    output_val[x, y, 0] = 0
-                    output_val[x, y, 1] = 1
-                    output_val[x, y, 2] = 0
-                elif rd_prob >= bg_prob and rd_prob >= fg_prob:
-                    output_val[x, y, 0] = 0
-                    output_val[x, y, 1] = 0
-                    output_val[x, y, 2] = 1
-
-        iou_score_full = self.IoU(output_val, self.gt_val_fused)
-        iou_score_bg = self.IoU(
-            output_val[:, :, 0], self.gt_val_fused[:, :, 0])
-        iou_score_fg = self.IoU(
-            output_val[:, :, 1], self.gt_val_fused[:, :, 1])
-        iou_score_rd = self.IoU(
-            output_val[:, :, 2], self.gt_val_fused[:, :, 2])
+        iou_score_full = self.IoU(one_hot, self.gt_val_fused)
+        iou_score_bg = self.IoU(one_hot[..., 0], self.gt_val_fused[..., 0])
+        iou_score_fg = self.IoU(one_hot[..., 1], self.gt_val_fused[..., 1])
+        iou_score_rd = self.IoU(one_hot[..., 2], self.gt_val_fused[..., 2])
 
         return iou_score_full, iou_score_bg, iou_score_fg, iou_score_rd
 
