@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import torch
+from tqdm import tqdm
 import random
 from argparse import ArgumentParser
 import sys
@@ -164,7 +165,7 @@ def main():
             batch_size = 1
 
         # Loop through data
-        for count in range(0, total_train_samples):
+        for count in tqdm(range(0, total_train_samples), desc=f"Training Epoch {epoch + 1} / {num_epochs}"):
 
             log_count = count + total_train_samples*epoch
 
@@ -284,7 +285,7 @@ def main():
                 with torch.no_grad():
 
                     # CaSSeD
-                    for val_count in range(cassed_num_val_samples):
+                    for val_count in tqdm(range(cassed_num_val_samples), desc="Validating CaSSeD"):
                         image_val, gt_val, _ = \
                             cassed_Dataset.getItemVal(val_count)
 
@@ -298,7 +299,7 @@ def main():
                         running_IoU_rd += IoU_score_rd
 
                     # Goose
-                    for val_count in range(goose_num_val_samples):
+                    for val_count in tqdm(range(goose_num_val_samples), desc="Validating Goose"):
                         image_val, gt_val, _ = \
                             goose_Dataset.getItemVal(val_count)
 
@@ -312,7 +313,7 @@ def main():
                         running_IoU_rd += IoU_score_rd
 
                     # OFFSED
-                    for val_count in range(offsed_num_val_samples):
+                    for val_count in tqdm(range(offsed_num_val_samples), desc="Validating OFFSED"):
                         image_val, gt_val, _ = \
                             offsed_Dataset.getItemVal(val_count)
 
@@ -326,7 +327,7 @@ def main():
                         running_IoU_rd += IoU_score_rd
                     
                     # ORFD
-                    for val_count in range(orfd_num_val_samples):
+                    for val_count in tqdm(range(orfd_num_val_samples), desc="Validating ORFD"):
                         image_val, gt_val, _ = \
                             orfd_Dataset.getItemVal(val_count)
 
@@ -340,7 +341,7 @@ def main():
                         running_IoU_rd += IoU_score_rd
 
                     # Rellis_3D
-                    for val_count in range(rellis3d_num_val_samples):
+                    for val_count in tqdm(range(rellis3d_num_val_samples), desc="Validating Rellis_3D"):
                         image_val, gt_val, _ = \
                             rellis3d_Dataset.getItemVal(val_count)
 
@@ -354,7 +355,7 @@ def main():
                         running_IoU_rd += IoU_score_rd
 
                     # Yamaha_CMU
-                    for val_count in range(yamaha_cmu_num_val_samples):
+                    for val_count in tqdm(range(yamaha_cmu_num_val_samples), desc="Validating Yamaha_CMU"):
                         image_val, gt_val, _ = \
                             yamaha_cmu_Dataset.getItemVal(val_count)
 
