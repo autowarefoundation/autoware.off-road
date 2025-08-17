@@ -132,20 +132,20 @@ def main():
             trainer.loss_backward()
 
             # Simulating batch size through gradient accumulation
-            if (count+1) % batch_size == 0:
+            if ((count+1) % batch_size == 0) or ((count+1) == total_train_samples):
                 trainer.run_optimizer()
 
             # Logging loss to Tensor Board every 250 steps
-            if (count+1) % 250 == 0:
+            if ((count+1) % 250 == 0) or ((count+1) == total_train_samples):
                 trainer.log_loss(log_count)
 
             # Logging Image to Tensor Board every 1000 steps
-            if (count+1) % 1000 == 0:
+            if ((count+1) % 1000 == 0) or ((count+1) == total_train_samples):
                 trainer.save_visualization(log_count)
 
             # Save model and run validation on entire validation
             # dataset after 8000 steps
-            if (count+1) % 8000 == 0:
+            if ((count+1) % 8000 == 0) or ((count+1) == total_train_samples):
 
                 # Save Model
                 model_save_path = model_save_root_path + 'iter_' + \
