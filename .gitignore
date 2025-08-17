@@ -5,3 +5,5 @@ __pycache__/
 outputs/
 data_process/create_masks/outputs/
 *.png
+data/
+runs/
