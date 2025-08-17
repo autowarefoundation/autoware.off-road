@@ -66,81 +66,55 @@ class LoadDataObjectSeg:
         foreground_objects_colour = (255, 28, 145)
         road_colour = (0, 255, 220)
 
-        # Image Size
-        row, col = input_label.size
+        background_colours = [background_objects_colour, road_edge_delimiter_colour, unlabelled_colour, sky_colour]
+        foreground_colours = [vulnerable_living_colour, small_mobile_vehicle_colour, large_mobile_vehicle_colour, foreground_objects_colour]
+        road_colours = [road_colour]
+
+        # Convert input PIL image to NumPy array
+        input_np = np.array(input_label)
+        row, col, _ = input_np.shape
         num_pixels = row*col
 
-        # Ground Truth Visualization
-        vis = Image.new(mode="RGB", size=(row, col))
+        # Initialize visualization and masks
+        vis = np.zeros_like(input_np, dtype=np.uint8)
+        ground_truth_background = np.zeros((row, col), dtype=np.uint8)
+        ground_truth_foreground = np.zeros((row, col), dtype=np.uint8)
+        ground_truth_road = np.zeros((row, col), dtype=np.uint8)
 
-        # Ground Truth Multi-Channel Label
-        ground_truth_sky = Image.new(mode="L", size=(row, col))
-        ground_truth_background = Image.new(mode="L", size=(row, col))
-        ground_truth_foreground = Image.new(mode="L", size=(row, col))
-        ground_truth_road = Image.new(mode="L", size=(row, col))
+        # Define boolean masks for classes
+        background_mask = np.isin(input_np.reshape(-1, 3), background_colours).all(axis=1).reshape(row, col)
+        foreground_mask = np.isin(input_np.reshape(-1, 3), foreground_colours).all(axis=1).reshape(row, col)
+        road_mask = np.isin(input_np.reshape(-1, 3), road_colours).all(axis=1).reshape(row, col)
 
-        # Loading images
-        px = input_label.load()
-        vx = vis.load()
-        sx = ground_truth_sky.load()
-        bx = ground_truth_background.load()
-        fx = ground_truth_foreground.load()
-        rx = ground_truth_road.load()
+        # Apply masks
+        vis[background_mask] = background_objects_colour
+        vis[foreground_mask] = foreground_objects_colour
+        vis[road_mask] = road_colour
+        
+        ground_truth_background[background_mask] = 255
+        ground_truth_foreground[foreground_mask] = 255
+        ground_truth_road[road_mask] = 255
 
-        # Counters for pixel level class frequency in image
-        background_class_freq = 0
-        foreground_class_freq = 0
-        road_class_freq = 0
-
-        # Extracting classes and assigning to colourmap
-        for x in range(row):
-            for y in range(col):
-
-                # BACKGROUND OBJECTS
-                if px[x, y] == background_objects_colour or \
-                        px[x, y] == road_edge_delimiter_colour or \
-                        px[x, y] == unlabelled_colour or \
-                        px[x, y] == sky_colour:
-
-                    vx[x, y] = background_objects_colour
-                    bx[x, y] = 255
-                    background_class_freq += 1
-
-                # FOREGROUND OBJECTS
-                elif px[x, y] == vulnerable_living_colour or \
-                        px[x, y] == small_mobile_vehicle_colour or \
-                        px[x, y] == large_mobile_vehicle_colour or \
-                        px[x, y] == foreground_objects_colour:
-
-                    vx[x, y] = foreground_objects_colour
-                    fx[x, y] = 255
-                    foreground_class_freq += 1
-
-                # ROAD
-                elif px[x, y] == road_colour:
-
-                    vx[x, y] = road_colour
-                    rx[x, y] = 255
-                    road_class_freq += 1
+        # Compute class frequencies
+        background_class_freq = np.sum(background_mask)
+        foreground_class_freq = np.sum(foreground_mask)
+        road_class_freq = np.sum(road_mask)
 
         # Calculate class weights for loss function
-        class_weights = []
-
-        background_class_weight = num_pixels/(background_class_freq + 5120)
-        class_weights.append(background_class_weight)
-
-        foreground_class_weight = num_pixels/(foreground_class_freq + 5120)
-        class_weights.append(foreground_class_weight)
-
-        road_class_weight = num_pixels/(road_class_freq + 5120)
-        class_weights.append(road_class_weight)
+        epsilon = 5120
+        class_weights = [
+            num_pixels / (background_class_freq + epsilon),
+            num_pixels / (foreground_class_freq + epsilon),
+            num_pixels / (road_class_freq + epsilon)
+        ]
 
         # Getting ground truth data
-        ground_truth = []
-        ground_truth.append(np.array(vis))
-        ground_truth.append(np.array(ground_truth_background))
-        ground_truth.append(np.array(ground_truth_foreground))
-        ground_truth.append(np.array(ground_truth_road))
+        ground_truth = [
+            vis,
+            ground_truth_background,
+            ground_truth_foreground,
+            ground_truth_road
+        ]
 
         return ground_truth, class_weights
 
