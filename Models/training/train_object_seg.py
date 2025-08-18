@@ -26,6 +26,10 @@ def main():
                         help="root path where test images are stored")
     parser.add_argument('-l', "--load_from_save", action='store_true',
                         help="flag for whether model is being loaded from a ObjectSeg checkpoint file")
+    parser.add_argument("-e", "--num_epochs", dest="num_epochs", type=int,
+                        help="number of training epochs")
+    parser.add_argument("-a", "--start_epoch", dest="start_epoch", default=0, type=int,
+                        help="starting epoch for training")
     args = parser.parse_args()
 
     # Root path
@@ -67,11 +71,12 @@ def main():
     trainer.zero_grad()
 
     # Total training epochs
-    num_epochs = 10
+    num_epochs = args.num_epochs
+    start_epoch = args.start_epoch
     batch_size = 32
 
     # Epochs
-    for epoch in range(0, num_epochs):
+    for epoch in range(start_epoch, start_epoch + num_epochs):
 
         # Iterators for datasets
         train_counts = {name: 0 for name in datasets}
@@ -95,7 +100,7 @@ def main():
             batch_size = 1
 
         # Loop through data
-        for count in tqdm(range(0, total_train_samples), desc=f"Training Epoch {epoch + 1} / {num_epochs}"):
+        for count in tqdm(range(0, total_train_samples), desc=f"Training Epoch {epoch + 1} / {start_epoch + num_epochs}"):
 
             log_count = count + total_train_samples*epoch
 
