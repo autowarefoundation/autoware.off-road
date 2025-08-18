@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import torch
+import numpy as np
 from tqdm import tqdm
 import random
 from argparse import ArgumentParser
@@ -99,6 +100,8 @@ def main():
         if epoch > 8:
             batch_size = 1
 
+        losses = []
+
         # Loop through data
         for count in tqdm(range(0, total_train_samples), desc=f"Training Epoch {epoch + 1} / {start_epoch + num_epochs}"):
 
@@ -132,6 +135,7 @@ def main():
 
             # Run model and calculate loss
             trainer.run_model()
+            losses.append(trainer.get_loss())
 
             # Gradient accumulation
             trainer.loss_backward()
@@ -142,7 +146,8 @@ def main():
 
             # Logging loss to Tensor Board every 250 steps
             if ((count+1) % 250 == 0) or ((count+1) == total_train_samples):
-                trainer.log_loss(log_count)
+                trainer.log_loss(log_count, loss=np.mean(losses))
+                losses.clear()
 
             # Logging Image to Tensor Board every 1000 steps
             if ((count+1) % 1000 == 0) or ((count+1) == total_train_samples):

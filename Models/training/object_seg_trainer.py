@@ -95,9 +95,11 @@ class ObjectSegTrainer():
         )
 
     # Logging Training Loss
-    def log_loss(self, log_count):
-        print('Logging Training Loss', log_count, self.get_loss())
-        self.writer.add_scalar("Loss/train", self.get_loss(), (log_count))
+    def log_loss(self, log_count, loss=None):
+        if loss is None:
+            loss = self.get_loss()
+        print('Logging Training Loss', log_count, loss)
+        self.writer.add_scalar("Loss/train", loss, (log_count))
 
     # Logging Validation mIoU Score
     def log_IoU(self, mIoU_full, mIoU_bg, mIoU_fg, mIoU_rd, log_count):
