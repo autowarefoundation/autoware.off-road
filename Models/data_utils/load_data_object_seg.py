@@ -1,17 +1,17 @@
 #! /usr/bin/env python3
 
-from typing import Literal
 import pathlib
 from PIL import Image
 import numpy as np
 
 
+DATASETS = ['CaSSeD', 'Goose', 'OFFSED', 'ORFD', 'Rellis_3D', 'Yamaha_CMU']
+
 class LoadDataObjectSeg:
-    def __init__(self, labels_filepath, images_filepath,
-                 dataset: Literal['CaSSeD', 'Goose', 'OFFSED', 'ORFD', 'Rellis_3D', 'Yamaha_CMU']):
+    def __init__(self, labels_filepath, images_filepath, dataset: str):
 
         self.dataset = dataset
-        if self.dataset not in ['CaSSeD', 'Goose', 'OFFSED', 'ORFD', 'Rellis_3D', 'Yamaha_CMU']:
+        if self.dataset not in DATASETS:
             raise ValueError('Dataset type is not correctly specified')
 
         self.labels = sorted(

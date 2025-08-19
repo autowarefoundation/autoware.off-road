@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 import os
 import sys
 sys.path.append('..')
-from data_utils.load_data_object_seg import LoadDataObjectSeg
+from data_utils.load_data_object_seg import LoadDataObjectSeg, DATASETS
 from training.object_seg_trainer import ObjectSegTrainer
 
 
@@ -47,13 +47,12 @@ def main():
     if args.load_from_save:
         load_from_checkpoint = True
 
-    datasets_name = ["CaSSeD", "Goose", "OFFSED", "ORFD", "Rellis_3D", "Yamaha_CMU"]
     datasets_info = {name: {"labels": root + f"{name}/{name}/gt_masks/",
                             "images": root + f"{name}/{name}/images/"}
-                             for name in datasets_name}
+                             for name in DATASETS}
     datasets = {name: LoadDataObjectSeg(datasets_info[name]["labels"],
                                         datasets_info[name]["images"],
-                                        name) for name in datasets_name}
+                                        name) for name in DATASETS}
     counts = {name: datasets[name].getItemCount() for name in datasets}
 
     total_train_samples = sum(v[0] for v in counts.values())
@@ -88,7 +87,7 @@ def main():
         train_counts = {name: 0 for name in datasets}
         completed = {name: False for name in datasets}
 
-        data_list = datasets_name.copy()
+        data_list = DATASETS.copy()
         random.shuffle(data_list)
         data_list_count = 0
 
@@ -184,7 +183,7 @@ def main():
                 # No gradient calculation
                 with torch.no_grad():
 
-                    for dataset_name in datasets_name:
+                    for dataset_name in DATASETS:
                         for val_count in tqdm(range(0, counts[dataset_name][1]),
                                               desc=f"Validating {dataset_name}"):
                             image_val, gt_val, _ = \
