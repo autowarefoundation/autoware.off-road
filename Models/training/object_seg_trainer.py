@@ -43,7 +43,7 @@ class ObjectSegTrainer():
         print(f'Using {self.device} for inference')
 
         if is_pretrained:
-            # Instantiate Model for validation or inference - load both pre-traiend SceneSeg and SuperDepth weights
+            # Instantiate Model for validation or inference - load both pre-traiend ObjectSeg weights
             if len(checkpoint_path) > 0:
                 # Loading model with full pre-trained weights
                 sceneSegNetwork = SceneSegNetwork()

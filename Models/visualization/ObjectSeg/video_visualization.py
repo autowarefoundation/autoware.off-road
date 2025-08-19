@@ -39,7 +39,7 @@ def main():
     parser.add_argument("-p", "--model_checkpoint_path", dest="model_checkpoint_path",
                         help="path to pytorch checkpoint file to load model dict")
     parser.add_argument("-i", "--video_filepath", dest="video_filepath",
-                        help="path to input video which will be processed by SceneSeg")
+                        help="path to input video which will be processed by ObjectSeg")
     parser.add_argument("-o", "--output_file", dest="output_file",
                         help="path to output video visualization file, must include output file name")
     parser.add_argument('-v', "--vis", action='store_true', default=False,

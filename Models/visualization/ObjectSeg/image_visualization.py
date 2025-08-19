@@ -39,7 +39,7 @@ def main():
     parser.add_argument("-p", "--model_checkpoint_path", dest="model_checkpoint_path",
                         help="path to pytorch checkpoint file to load model dict")
     parser.add_argument("-i", "--input_image_filepath", dest="input_image_filepath",
-                        help="path to input image which will be processed by SceneSeg")
+                        help="path to input image which will be processed by ObjectSeg")
     args = parser.parse_args()
 
     # Saved model checkpoint path

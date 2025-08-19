@@ -132,7 +132,7 @@ class Augmentations():
         self.image = image
         self.augmented_image = image
 
-    # SEMANTIC SEGMENTATION - SceneSeg
+    # SEMANTIC SEGMENTATION - ObjectSeg
     # Apply augmentations transform
     def applyTransformSeg(self, image, ground_truth):
 

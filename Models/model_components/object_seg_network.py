@@ -19,12 +19,12 @@ class ObjectSegNetwork(nn.Module):
         self.SceneNeck = SceneNeck()
 
         # Head
-        self.SceneSegHead = ObjectSegHead()
+        self.ObjectSegHead = ObjectSegHead()
 
     def forward(self, image):
         features = self.PreTrainedBackbone(image)
         deep_features = features[4]
         context = self.SceneContext(deep_features)
         neck = self.SceneNeck(context, features)
-        output = self.SceneSegHead(neck, features)
+        output = self.ObjectSegHead(neck, features)
         return output
