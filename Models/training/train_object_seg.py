@@ -31,6 +31,8 @@ def main():
                         help="number of training epochs")
     parser.add_argument("-a", "--start_epoch", dest="start_epoch", default=0, type=int,
                         help="starting epoch for training")
+    parser.add_argument("--learning_rate", dest="learning_rate", default=0.0001, type=float,
+                        help="learning rate for training")
     args = parser.parse_args()
 
     # Root path
@@ -65,9 +67,12 @@ def main():
 
     # Trainer Class
     if load_from_checkpoint == False:
-        trainer = ObjectSegTrainer(pretrained_checkpoint_path=pretrained_checkpoint_path)
+        trainer = ObjectSegTrainer(pretrained_checkpoint_path=pretrained_checkpoint_path,
+                                   learning_rate=args.learning_rate)
     else:
-        trainer = ObjectSegTrainer(checkpoint_path=checkpoint_path, is_pretrained=True)
+        trainer = ObjectSegTrainer(checkpoint_path=checkpoint_path,
+                                   is_pretrained=True,
+                                   learning_rate=args.learning_rate)
 
     trainer.zero_grad()
 

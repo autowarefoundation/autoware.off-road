@@ -13,7 +13,10 @@ from model_components.scene_seg_network import SceneSegNetwork
 
 
 class ObjectSegTrainer():
-    def __init__(self, checkpoint_path='', pretrained_checkpoint_path='', is_pretrained=False):
+    def __init__(self, checkpoint_path='',
+                 pretrained_checkpoint_path='',
+                 is_pretrained=False,
+                 learning_rate=0.0001):
         self.image = 0
         self.image_val = 0
         self.gt = 0
@@ -77,7 +80,7 @@ class ObjectSegTrainer():
         self.writer = SummaryWriter()
 
         # Learning rate and optimizer
-        self.learning_rate = 0.0001
+        self.learning_rate = learning_rate
         self.optimizer = optim.AdamW(
             self.model.parameters(), self.learning_rate)
 
