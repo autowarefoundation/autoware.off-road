@@ -1,72 +1,76 @@
-src_image_pattern: "Goose/**/**_vis.png"
+dataset: "Goose"
+src_image_pattern: "Goose/**/**_windshield_vis.png"
 src_gt_mask_pattern: "Goose/**/**_labelids.png"
 exclude_patterns: ["Goose/goose_2d_test/**/**.png"]
 dst_image_dir: "AORAS/ObjectSeg/Goose/Goose/images"
 dst_gt_mask_dir: "AORAS/ObjectSeg/Goose/Goose/gt_masks"
+filename_mapping:
+  "_windshield_vis": ""
+  "_labelids": ""
 overwrite_existing: false
 color_thresh: 3
 label_to_id_mapping:
-  0:  1   # undefined          -> background_objects
-  1:  2   # traffic_cone       -> infrastructure_objects
-  2:  15  # snow               -> snow
-  3:  8   # cobble             -> gravel
-  4:  2   # obstacle           -> infrastructure_objects
-  5:  10  # leaves             -> small vegatation
-  6:  2   # street_light       -> infrastructure_objects
-  7:  7   # bikeway            -> paved road
-  8:  1   # ego_vehicle        -> background_objects
-  9:  2   # pedestrian_crossing-> infrastructure_objects
-  10: 2   # road_block         -> infrastructure_objects
-  11: 7   # road_marking       -> paved road
-  12: 6   # car                -> large_mobile_vehicle
-  13: 5   # bicycle            -> small_mobile_vehicle
-  14: 4   # person             -> vulnerable_living
-  15: 6   # bus                -> large_mobile_vehicle
-  16: 11  # forest             -> large vegatation
-  17: 11  # bush               -> large vegatation
-  18: 10  # moss               -> small vegatation
-  19: 2   # traffic_light      -> infrastructure_objects
-  20: 4   # motorcycle         -> small_mobile_vehicle
-  21: 7   # sidewalk           -> paved road
-  22: 7   # curb               -> paved road
-  23: 7   # asphalt            -> paved road
-  24: 8   # gravel             -> gravel
-  25: 2   # boom_barrier       -> infrastructure_objects
-  26: 8   # rail_track         -> gravel
-  27: 11  # tree_crown         -> large vegatation
-  28: 11  # tree_trunk         -> large vegatation
-  29: 11  # debris             -> large vegatation
-  30: 11  # crops              -> large vegatation
-  31: 12  # soil               -> dirt
-  32: 4   # rider              -> vulnerable_living
-  33: 4   # animal             -> vulnerable_living
-  34: 6   # truck              -> large_mobile_vehicle
-  35: 8   # on_rails           -> gravel
-  36: 6   # caravan            -> large_mobile_vehicle
-  37: 6   # trailer            -> large_mobile_vehicle
-  38: 3   # building           -> building
-  39: 3   # wall               -> building
-  40: 9   # rock               -> rock
-  41: 2   # fence              -> infrastructure_objects
-  42: 2   # guard_rail         -> infrastructure_objects
-  43: 2   # bridge             -> infrastructure_objects
-  44: 2   # tunnel             -> infrastructure_objects
-  45: 2   # pole               -> infrastructure_objects
-  46: 2   # traffic_sign       -> infrastructure_objects
-  47: 2   # misc_sign          -> infrastructure_objects
-  48: 2   # barrier_tape       -> infrastructure_objects
-  49: 4   # kick_scooter       -> small_mobile_vehicle
-  50: 10  # low_grass          -> small vegatation
-  51: 10  # high_grass         -> small vegatation
-  52: 11  # scenery_vegetation -> large vegatation
-  53: 0   # sky                -> sky
-  54: 13  # water              -> water
-  55: 2   # wire               -> infrastructure_objects
-  56: 1   # outlier            -> background_objects
-  57: 6   # heavy_machinery    -> large_mobile_vehicle
-  58: 2   # container          -> infrastructure_objects
-  59: 11  # hedge              -> large vegatation
-  60: 2   # barrel             -> infrastructure_objects
-  61: 2   # pipe               -> infrastructure_objects
-  62: 10  # tree_root          -> small vegatation
-  63: 6   # military_vehicle   -> large_mobile_vehicle
+  0:  0   # undefined          -> background
+  1:  1   # traffic_cone       -> man-made_structures
+  2:  0   # snow               -> background
+  3:  0   # cobble             -> background
+  4:  1   # obstacle           -> man-made_structures
+  5:  0   # leaves             -> background
+  6:  1   # street_light       -> man-made_structures
+  7:  0   # bikeway            -> background
+  8:  0   # ego_vehicle        -> background
+  9:  1   # pedestrian_crossing-> man-made_structures
+  10: 1   # road_block         -> man-made_structures
+  11: 0   # road_marking       -> background
+  12: 3   # car                -> vehicle
+  13: 3   # bicycle            -> vehicle
+  14: 2   # person             -> vulnerable_living
+  15: 3   # bus                -> vehicle
+  16: 0   # forest             -> background
+  17: 4   # bush               -> natural_obstacles
+  18: 0   # moss               -> background
+  19: 2   # traffic_light      -> man-made_structures
+  20: 3   # motorcycle         -> vehicle
+  21: 0   # sidewalk           -> background
+  22: 0   # curb               -> background
+  23: 0   # asphalt            -> background
+  24: 0   # gravel             -> background
+  25: 1   # boom_barrier       -> man-made_structures
+  26: 0   # rail_track         -> background
+  27: 4   # tree_crown         -> natural_obstacles
+  28: 4   # tree_trunk         -> natural_obstacles
+  29: 0   # debris             -> background
+  30: 4   # crops              -> natural_obstacles
+  31: 0   # soil               -> background
+  32: 2   # rider              -> vulnerable_living
+  33: 2   # animal             -> vulnerable_living
+  34: 3   # truck              -> vehicle
+  35: 0   # on_rails           -> background
+  36: 3   # caravan            -> vehicle
+  37: 3   # trailer            -> vehicle
+  38: 1   # building           -> man-made_structures
+  39: 1   # wall               -> man-made_structures
+  40: 4   # rock               -> natural_obstacles
+  41: 1   # fence              -> man-made_structures
+  42: 1   # guard_rail         -> man-made_structures
+  43: 1   # bridge             -> man-made_structures
+  44: 1   # tunnel             -> man-made_structures
+  45: 1   # pole               -> man-made_structures
+  46: 1   # traffic_sign       -> man-made_structures
+  47: 1   # misc_sign          -> man-made_structures
+  48: 1   # barrier_tape       -> man-made_structures
+  49: 3   # kick_scooter       -> vehicle
+  50: 0   # low_grass          -> background
+  51: 4   # high_grass         -> natural_obstacles
+  52: 0   # scenery_vegetation -> background
+  53: 0   # sky                -> background
+  54: 0   # water              -> background
+  55: 0   # wire               -> background
+  56: 0   # outlier            -> background
+  57: 3   # heavy_machinery    -> vehicle
+  58: 1   # container          -> man-made_structures
+  59: 4   # hedge              -> natural_obstacles
+  60: 1   # barrel             -> man-made_structures
+  61: 1   # pipe               -> man-made_structures
+  62: 0   # tree_root          -> background
+  63: 3   # military_vehicle   -> vehicle

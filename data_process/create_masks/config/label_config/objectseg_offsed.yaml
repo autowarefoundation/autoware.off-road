@@ -1,28 +1,30 @@
+dataset: "OFFSED"
 src_image_pattern: "OFFSED/left/*.png"
 src_gt_mask_pattern: "OFFSED/devkit_offsed/SegmentationClass/*.png"
 exclude_patterns: []
 dst_image_dir: "AORAS/ObjectSeg/OFFSED/OFFSED/images"
 dst_gt_mask_dir: "AORAS/ObjectSeg/OFFSED/OFFSED/gt_masks"
+filename_mapping: {}
 overwrite_existing: false
 color_thresh: 3
 label_to_id_mapping:
-  "[0, 0, 0]":       1   # background           -> background_objects
-  "[70, 70, 70]":    3   # building             -> building
-  "[99, 128, 52]":   11  # bush                 -> large vegatation
-  "[0, 0, 90]":      6   # camper               -> large_mobile_vehicle
-  "[0, 0, 142]":     6   # car                  -> large_mobile_vehicle
-  "[184, 151, 51]":  11  # crops                -> large_vegatation
-  "[81, 0, 81]":     12  # drivable dirt        -> dirt
-  "[128, 64, 128]":  7   # drivable pavement    -> paved_road
-  "[0, 60, 100]":    6   # excavator            -> large_mobile_vehicle
-  "[24, 226, 31]":   10  # grass                -> small_vegatation
-  "[180, 165, 180]": 2   # guard rail           -> infrastructure_objects
-  "[44, 231, 215]":  4   # held object          -> vulnerable_living
-  "[175, 44, 190]":  12  # nondrivable dirt     -> dirt
-  "[244, 35, 232]":  7   # nondrivable pavement -> paved_road
-  "[255, 0, 0]":     2   # obstacle             -> infrastructure_objects
-  "[209, 43, 77]":   4   # person               -> vulnerable_living
-  "[70, 130, 180]":  0   # sky                  -> sky
-  "[107, 142, 35]":  11  # tree                 -> large_vegatation
-  "[0, 0, 70]":      11  # truck                -> large_vegatation
-  "[102, 102, 156]": 3   # wall                 -> building
+  "[0, 0, 0]":       0   # background           -> background
+  "[70, 70, 70]":    1   # building             -> man-made_structures
+  "[99, 128, 52]":   4   # bush                 -> natural_obstacles
+  "[0, 0, 90]":      3   # camper               -> vehicle
+  "[0, 0, 142]":     3   # car                  -> vehicle
+  "[184, 151, 51]":  4   # crops                -> natural_obstacles
+  "[81, 0, 81]":     0   # drivable dirt        -> background
+  "[128, 64, 128]":  0   # drivable pavement    -> background
+  "[0, 60, 100]":    3   # excavator            -> vehicle
+  "[24, 226, 31]":   0   # grass                -> background
+  "[180, 165, 180]": 1   # guard rail           -> man-made_structures
+  "[44, 231, 215]":  2   # held_object          -> vulnerable_living
+  "[175, 44, 190]":  0   # nondrivable dirt     -> background
+  "[244, 35, 232]":  0   # nondrivable pavement -> background
+  "[255, 0, 0]":     1   # obstacle             -> man-made_structures
+  "[209, 43, 77]":   2   # person               -> vulnerable_living
+  "[70, 130, 180]":  0   # sky                  -> background
+  "[107, 142, 35]":  4   # tree                 -> natural_obstacles
+  "[0, 0, 70]":      3   # truck                -> vehicle
+  "[102, 102, 156]": 1   # wall                 -> man-made_structures
