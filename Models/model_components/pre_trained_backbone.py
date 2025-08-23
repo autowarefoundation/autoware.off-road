@@ -8,8 +8,6 @@ class PreTrainedBackbone(nn.Module):
         super(PreTrainedBackbone, self).__init__()
 
         self.pretrainedBackBone = pretrainedModel.Backbone
-        for param in self.pretrainedBackBone.parameters():
-            param.requires_grad = False
 
     def forward(self, image):
         features = self.pretrainedBackBone(image)
