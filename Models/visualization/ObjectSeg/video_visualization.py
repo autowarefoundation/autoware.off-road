@@ -10,7 +10,7 @@ sys.path.append('../..')
 from inference.object_seg_infer import ObjectSegNetworkInfer
 
 
-def make_visualization(prediction):
+def make_visualization(prediction, show_road=False):
 
     # Creating visualization object
     shape = prediction.shape
@@ -31,6 +31,15 @@ def make_visualization(prediction):
     vis_predict_object[foreground_lables[0], foreground_lables[1], 1] = 28
     vis_predict_object[foreground_lables[0], foreground_lables[1], 2] = 255
 
+    if show_road:
+        # Getting road labels
+        road_lables = np.where(prediction == 2)
+
+        # Assigning road colour
+        vis_predict_object[road_lables[0], road_lables[1], 0] = 220
+        vis_predict_object[road_lables[0], road_lables[1], 1] = 255
+        vis_predict_object[road_lables[0], road_lables[1], 2] = 0
+
     return vis_predict_object
 
 
@@ -45,6 +54,8 @@ def main():
                         help="path to output video visualization file, must include output file name")
     parser.add_argument('-v', "--vis", action='store_true', default=False,
                         help="flag for whether to show frame by frame visualization while processing is occuring")
+    parser.add_argument('-r', "--show_road", action='store_true', default=False,
+                        help="flag for whether to show road segmentation in visualization")
     args = parser.parse_args()
 
     # Saved model checkpoint path
@@ -89,7 +100,7 @@ def main():
 
         # Running inference
         prediction = model.inference(image_pil)
-        vis_obj = make_visualization(prediction)
+        vis_obj = make_visualization(prediction, args.show_road)
 
         # Resizing to match the size of the output video
         # which is set to standard HD resolution
