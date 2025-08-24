@@ -3,6 +3,7 @@
 import cv2
 import sys
 import numpy as np
+from tqdm import tqdm
 from PIL import Image
 from argparse import ArgumentParser
 sys.path.append('../..')
@@ -64,7 +65,7 @@ def main():
                                  cv2.VideoWriter_fourcc(*"MJPG"), fps, (1280, 720))
 
     # Check if video catpure opened successfully
-    if (cap.isOpened() == False):
+    if not cap.isOpened():
         print("Error opening video stream or file")
     else:
         print('Reading video frames')
@@ -72,41 +73,39 @@ def main():
     # Transparency factor
     alpha = 0.5
 
-    # Read until video is completed
     print('Processing started')
-    while (cap.isOpened()):
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    for _ in tqdm(range(frame_count)):
         # Capture frame-by-frame
         ret, frame = cap.read()
-        if ret == True:
-
-            # Display the resulting frame
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image_pil = Image.fromarray(image)
-            image_pil = image_pil.resize((640, 320))
-
-            # Running inference
-            prediction = model.inference(image_pil)
-            vis_obj = make_visualization(prediction)
-
-            # Resizing to match the size of the output video
-            # which is set to standard HD resolution
-            frame = cv2.resize(frame, (1280, 720))
-            vis_obj = cv2.resize(vis_obj, (1280, 720))
-
-            # Create the composite visualization
-            image_vis_obj = cv2.addWeighted(
-                vis_obj, alpha, frame, 1 - alpha, 0)
-
-            if (args.vis):
-                cv2.imshow('Prediction Objects', image_vis_obj)
-                cv2.waitKey(10)
-
-            # Writing to video frame
-            writer_obj.write(image_vis_obj)
-
-        else:
+        if not ret:
             print('Frame not read - ending processing')
             break
+
+        # Display the resulting frame
+        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image_pil = Image.fromarray(image)
+        image_pil = image_pil.resize((640, 320))
+
+        # Running inference
+        prediction = model.inference(image_pil)
+        vis_obj = make_visualization(prediction)
+
+        # Resizing to match the size of the output video
+        # which is set to standard HD resolution
+        frame = cv2.resize(frame, (1280, 720))
+        vis_obj = cv2.resize(vis_obj, (1280, 720))
+
+        # Create the composite visualization
+        image_vis_obj = cv2.addWeighted(
+            vis_obj, alpha, frame, 1 - alpha, 0)
+
+        if args.vis:
+            cv2.imshow('Prediction Objects', image_vis_obj)
+            cv2.waitKey(10)
+
+        # Writing to video frame
+        writer_obj.write(image_vis_obj)
 
     # When everything done, release the video capture and writer objects
     cap.release()
