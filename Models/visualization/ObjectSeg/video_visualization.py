@@ -8,6 +8,7 @@ from PIL import Image
 from argparse import ArgumentParser
 sys.path.append('../..')
 from inference.object_seg_infer import ObjectSegNetworkInfer
+from data_utils.boundary_dists import BoundaryDists
 
 
 def make_visualization(prediction, show_road=False):
@@ -31,17 +32,23 @@ def make_visualization(prediction, show_road=False):
     vis_predict_object[foreground_lables[0], foreground_lables[1], 1] = 28
     vis_predict_object[foreground_lables[0], foreground_lables[1], 2] = 255
 
-    if show_road:
-        # Getting road labels
-        road_lables = np.where(prediction == 2)
+    # Getting drivable_lables labels
+    drivable_lables = np.where(prediction == 2)
 
-        # Assigning road colour
-        vis_predict_object[road_lables[0], road_lables[1], 0] = 220
-        vis_predict_object[road_lables[0], road_lables[1], 1] = 255
-        vis_predict_object[road_lables[0], road_lables[1], 2] = 0
+    # Assigning drivable_lables colour
+    vis_predict_object[drivable_lables[0], drivable_lables[1], 0] = 220
+    vis_predict_object[drivable_lables[0], drivable_lables[1], 1] = 255
+    vis_predict_object[drivable_lables[0], drivable_lables[1], 2] = 0
 
     return vis_predict_object
 
+def boundry_dist_visualization(image, boundary_dists):
+    height = image.shape[0]
+    width = image.shape[1]
+    cols = np.linspace(0, width - 1, len(boundary_dists), dtype=int)
+    for col, dist in zip(cols, boundary_dists):
+        row = int(height - 1 - dist * height)
+        cv2.circle(image, (col, row), 5, (0, 100, 0), thickness=-1)
 
 def main():
 
@@ -101,6 +108,11 @@ def main():
         # Running inference
         prediction = model.inference(image_pil)
         vis_obj = make_visualization(prediction, args.show_road)
+
+        # Boundary distance visualization
+        boundry = BoundaryDists(prediction, 32)
+        boundry_dists = boundry.get_boundary_dists()
+        boundry_dist_visualization(vis_obj, boundry_dists)
 
         # Resizing to match the size of the output video
         # which is set to standard HD resolution
