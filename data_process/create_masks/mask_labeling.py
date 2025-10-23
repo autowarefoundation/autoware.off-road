@@ -23,7 +23,7 @@ args = parser.parse_args()
 
 # -------------------- Safety Check --------------------
 if os.path.abspath(args.input_folder) == os.path.abspath(args.output_folder):
-    raise ValueError("❌ Input and output folder paths must be different to avoid overwriting images.")
+    raise ValueError("Input and output folder paths must be different to avoid overwriting images.")
 
 os.makedirs(args.output_folder, exist_ok=True)
 
@@ -86,21 +86,21 @@ selected_color = id_to_color[selected_id]
 print("============================================================")
 print("Interactive SAM Labeling Tool — Controls & Shortcuts")
 print("============================================================")
-print("🖱️  Mouse:")
+print("Mouse:")
 print("  • Short Left Click (<0.25s): Add SAM prompt point for CURRENT color ID")
 print("  • Hold Left Click (≥0.25s): Manual paint (yellow brush outline)")
 print("  • Middle Button Drag: Erase mask (red brush outline)")
 print("  • Right Click: Clear mask for the current color ID")
 print("  • Ctrl + Mouse Wheel: Adjust brush/eraser radius")
 print()
-print("⌨️  Keyboard:")
+print("Keyboard:")
 print("  • 0–9: Switch color ID manually")
 print("  • H: Toggle mask overlay visibility")
 print("  • Z: Undo last operation")
 print("  • N / B: Next / Previous image (auto-saves if modified)")
 print("  • ESC: Save current mask and exit")
 print()
-print("💡 Notes:")
+print("Notes:")
 print(f"  - FILL_HOLE_WIDTH = {FILL_HOLE_WIDTH} px (morphological closing on undefined regions)")
 print("  - Preloaded masks can be refined directly (no auto color switching).")
 print("============================================================")
@@ -138,7 +138,7 @@ def save_mask():
         undef = (out == 0).all(-1)
         out[undef] = id_to_color[0]
     cv2.imwrite(mask_path(), out)
-    print(f"✅ Saved {mask_path()}")
+    print(f"Saved {mask_path()}")
     modified = False
 
 def load_mask():
@@ -151,7 +151,7 @@ def load_mask():
         return
     m = cv2.imread(p)
     if m is None:
-        print(f"⚠️ Failed to load {p}")
+        print(f"Failed to load {p}")
         return
     if m.shape[:2] != (h, w):
         m = cv2.resize(m, (w, h), interpolation=cv2.INTER_NEAREST)
