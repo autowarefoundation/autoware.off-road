@@ -232,6 +232,7 @@ class World(object):
         self.sync = args.sync
         self.traffic_manager = traffic_manager
         self.actor_role_name = args.rolename
+        self.lead_truck_enabled = args.lead_truck
         self.npc_truck = None
         try:
             self.map = self.world.get_map()
@@ -334,38 +335,42 @@ class World(object):
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)
             
-        # Spawn the NPC mid-size sedan in front of the ego vehicle
+        # Spawn the lead mining truck in front of the ego vehicle (only when --lead_truck true)
         # First destroy existing if any
         if self.npc_truck is not None:
             self.npc_truck.destroy()
             self.npc_truck = None
-            
-        npc_bp_list = blueprint_lib.filter('vehicle.lincoln.mkz_2020')
-        if not npc_bp_list:
-            npc_bp_list = blueprint_lib.filter('vehicle.*.mkz*')
-        if npc_bp_list:
-            npc_bp = npc_bp_list[0]
-            if npc_bp.has_attribute('color'):
-                color = random.choice(npc_bp.get_attribute('color').recommended_values)
-                npc_bp.set_attribute('color', color)
-            
-            player_transform = self.player.get_transform()
-            forward_vector = player_transform.get_forward_vector()
-            
-            # Spawn 10 meters in front
-            spawn_location = player_transform.location + forward_vector * 10.0
-            spawn_location.z += 2.0  # Avoid ground collision
-            
-            npc_spawn_point = carla.Transform(spawn_location, player_transform.rotation)
-            
-            self.npc_truck = self.world.try_spawn_actor(npc_bp, npc_spawn_point)
-            if self.npc_truck is not None:
-                self.npc_truck.set_autopilot(True, self.traffic_manager.get_port())
-                self.modify_vehicle_physics(self.npc_truck)
-                self.traffic_manager.ignore_lights_percentage(self.npc_truck, 100)
-                self.traffic_manager.auto_lane_change(self.npc_truck, False)
-            else:
-                print("Failed to spawn NPC car at the requested location.")
+
+        if self.lead_truck_enabled:
+            npc_bp_list = blueprint_lib.filter('vehicle.miningtruck.miningtruck*')
+            if not npc_bp_list:
+                npc_bp_list = blueprint_lib.filter('*mining*')
+            if npc_bp_list:
+                npc_bp = npc_bp_list[0]
+                npc_bp.set_attribute('role_name', 'lead_truck')
+                if npc_bp.has_attribute('terramechanics'):
+                    npc_bp.set_attribute('terramechanics', 'true')
+                if npc_bp.has_attribute('color'):
+                    color = random.choice(npc_bp.get_attribute('color').recommended_values)
+                    npc_bp.set_attribute('color', color)
+
+                player_transform = self.player.get_transform()
+                forward_vector = player_transform.get_forward_vector()
+
+                # Spawn 15 meters in front (larger gap for truck-to-truck)
+                spawn_location = player_transform.location + forward_vector * 15.0
+                spawn_location.z += 2.0  # Avoid ground collision
+
+                npc_spawn_point = carla.Transform(spawn_location, player_transform.rotation)
+
+                self.npc_truck = self.world.try_spawn_actor(npc_bp, npc_spawn_point)
+                if self.npc_truck is not None:
+                    self.npc_truck.set_autopilot(True, self.traffic_manager.get_port())
+                    self.modify_vehicle_physics(self.npc_truck)
+                    self.traffic_manager.ignore_lights_percentage(self.npc_truck, 100)
+                    self.traffic_manager.auto_lane_change(self.npc_truck, False)
+                else:
+                    print("Failed to spawn lead mining truck at the requested location.")
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -1980,6 +1985,9 @@ def main():
     argparser.add_argument(
         '--sync', action='store_true',
         help='Activate synchronous mode execution')
+    argparser.add_argument(
+        '--lead_truck', type=lambda x: x.lower() == 'true', default=False,
+        help='Spawn a lead mining truck in front of the ego vehicle (default: false)')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]

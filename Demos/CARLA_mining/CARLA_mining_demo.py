@@ -56,8 +56,10 @@ class GapFollowerParams(Structure):
     ]
 
 class CARLAMiningDemoNode(Node):
-    def __init__(self, contour_model_path, speed_model_path):
+    def __init__(self, contour_model_path, speed_model_path, lead_truck=False):
         super().__init__('carla_mining_demo')
+        self.lead_truck_mode = lead_truck
+        self.lead_truck_speed = 0.0  # Speed received from lead mining truck
         
         self.get_logger().info('Loading foundation models...')
         
@@ -193,6 +195,14 @@ class CARLAMiningDemoNode(Node):
         self.current_speed = 0.0
         self.speed_sub = self.create_subscription(Float32, '/carla/ego_vehicle/speed', self.speed_callback, 10)
 
+        # Lead truck speed subscription (enabled via --lead_truck true)
+        if self.lead_truck_mode:
+            self.lead_truck_speed_sub = self.create_subscription(
+                Float32, '/carla/lead_truck/speed', self.lead_truck_speed_callback, 10)
+            self.get_logger().info("Lead truck mode ENABLED — subscribing to /carla/lead_truck/speed")
+        else:
+            self.lead_truck_speed_sub = None
+
         self.get_logger().info("C++ Controllers initialized and Ackermann publisher created.")
 
         # Note: cv2.imshow must run in the main thread.
@@ -200,6 +210,9 @@ class CARLAMiningDemoNode(Node):
 
     def speed_callback(self, msg):
         self.current_speed = msg.data
+
+    def lead_truck_speed_callback(self, msg):
+        self.lead_truck_speed = msg.data
 
     def discover_topics(self):
         """Scans for /carla/vehicle{N}/rgb{M}/image.
@@ -465,15 +478,18 @@ class CARLAMiningDemoNode(Node):
                             cte = Y_left
                             yaw_error = np.arctan2(Y_left, max(X_fwd, 0.1))
                             
-                            steer_angle = self.lib_steer.steering_compute(self.steer_handle, cte, yaw_error, 8.33, 0.0)
-                            speed_effort = self.lib_pi.pi_compute_effort(self.pi_handle, float(self.current_speed), 8.33)
-                            
+                            # In lead truck mode, match the lead truck's speed; otherwise use fixed target
+                            target_speed = self.lead_truck_speed if self.lead_truck_mode else 8.33
+
+                            steer_angle = self.lib_steer.steering_compute(self.steer_handle, cte, yaw_error, target_speed, 0.0)
+                            speed_effort = self.lib_pi.pi_compute_effort(self.pi_handle, float(self.current_speed), target_speed)
+
                             # Clamp the effort to max acceleration limits to avoid infinite windup overriding Ackermann speed target
                             speed_effort = max(min(speed_effort, 1.5), -3.0)
-                            
+
                             msg = AckermannDrive()
                             msg.steering_angle = -float(steer_angle)
-                            msg.speed = 8.33 # target speed
+                            msg.speed = target_speed
                             msg.acceleration = float(speed_effort)
                             self.ackermann_pub.publish(msg)
                             
@@ -570,11 +586,14 @@ class CARLAMiningDemoNode(Node):
 
 def main():
     parser = argparse.ArgumentParser(description='ROS2 Demo Node for Foundation Models in CARLA')
-    parser.add_argument('--contour_model', type=str, required=True, 
+    parser.add_argument('--contour_model', type=str, required=True,
                         help='Path to the freespace_contour model (best.pt)')
-    parser.add_argument('--speed_model', type=str, required=True, 
+    parser.add_argument('--speed_model', type=str, required=True,
                         help='Path to the auto_speed model (best.pt or its directory)')
-    
+    parser.add_argument('--lead_truck', type=lambda x: x.lower() == 'true', default=False,
+                        help='Enable lead mining truck following mode (default: false). '
+                             'Subscribes to /carla/lead_truck/speed and uses it as the target speed.')
+
     args = parser.parse_args()
 
     # Ensure paths exist
@@ -586,7 +605,7 @@ def main():
         return
 
     rclpy.init()
-    node = CARLAMiningDemoNode(args.contour_model, args.speed_model)
+    node = CARLAMiningDemoNode(args.contour_model, args.speed_model, lead_truck=args.lead_truck)
     
     # Use MultiThreadedExecutor to handle dynamic topic discovery and high-rate camera input
     executor = MultiThreadedExecutor(num_threads=8)
