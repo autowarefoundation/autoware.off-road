@@ -1,0 +1,7 @@
+opencv-python
+numpy
+pyyaml
+omegaconf
+hydra-core
+torch
+torchvision

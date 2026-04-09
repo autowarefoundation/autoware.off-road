@@ -6,4 +6,5 @@ outputs/
 data_process/create_masks/outputs/
 *.png
 data/
+Simulation/CARLA/data/
 runs/

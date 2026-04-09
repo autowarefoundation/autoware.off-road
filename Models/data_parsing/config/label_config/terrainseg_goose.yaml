@@ -1,0 +1,76 @@
+drivabledataset: "Goose"
+src_image_pattern: "Goose/**/**_windshield_vis.png"
+src_gt_mask_pattern: "Goose/**/**_labelids.png"
+exclude_patterns: ["Goose/goose_2d_test/**/**.png"]
+dst_image_dir: "AORAS/TerrainSeg/Goose/Goose/images"
+dst_gt_mask_dir: "AORAS/TerrainSeg/Goose/Goose/gt_masks"
+filename_mapping:
+  "_windshield_vis": ""
+  "_labelids": ""
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  0:  0   # undefined          -> background
+  1:  0   # traffic_cone       -> background
+  2:  4   # snow               -> snow
+  3:  1   # cobble             -> road
+  4:  0   # obstacle           -> background
+  5:  2   # leaves             -> vegetation
+  6:  0   # street_light       -> background
+  7:  1   # bikeway            -> road
+  8:  0   # ego_vehicle        -> background
+  9:  0   # pedestrian_crossing-> background
+  10: 0   # road_block         -> background
+  11: 1   # road_marking       -> road
+  12: 0   # car                -> background
+  13: 0   # bicycle            -> background
+  14: 0   # person             -> background
+  15: 0   # bus                -> background
+  16: 0   # forest             -> background
+  17: 0   # bush               -> background
+  18: 2   # moss               -> vegetation
+  19: 0   # traffic_light      -> background
+  20: 0   # motorcycle         -> background
+  21: 1   # sidewalk           -> road
+  22: 1   # curb               -> road
+  23: 1   # asphalt            -> road
+  24: 1   # gravel             -> road
+  25: 0   # boom_barrier       -> background
+  26: 1   # rail_track         -> road
+  27: 0   # tree_crown         -> background
+  28: 0   # tree_trunk         -> background
+  29: 0   # debris             -> background
+  30: 0   # crops              -> background
+  31: 1   # soil               -> road
+  32: 0   # rider              -> background
+  33: 0   # animal             -> background
+  34: 0   # truck              -> background
+  35: 0   # on_rails           -> background
+  36: 0   # caravan            -> background
+  37: 0   # trailer            -> background
+  38: 0   # building           -> background
+  39: 0   # wall               -> background
+  40: 0   # rock               -> background
+  41: 0   # fence              -> background
+  42: 0   # guard_rail         -> background
+  43: 0   # bridge             -> background
+  44: 0   # tunnel             -> background
+  45: 0   # pole               -> background
+  46: 0   # traffic_sign       -> background
+  47: 0   # misc_sign          -> background
+  48: 0   # barrier_tape       -> background
+  49: 0   # kick_scooter       -> background
+  50: 2   # low_grass          -> vegetation
+  51: 0   # high_grass         -> background
+  52: 0   # scenery_vegetation -> background
+  53: 0   # sky                -> background
+  54: 0   # water              -> background
+  55: 0   # wire               -> background
+  56: 0   # outlier            -> background
+  57: 0   # heavy_machinery    -> background
+  58: 0   # container          -> background
+  59: 0   # hedge              -> background
+  60: 0   # barrel             -> background
+  61: 0   # pipe               -> background
+  62: 0   # tree_root          -> background
+  63: 0   # military_vehicle   -> background

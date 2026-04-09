@@ -1,0 +1,6 @@
+id_to_color_mapping:
+  0:  [61, 93, 255]      # background   -> blue
+  1:  [144, 135, 119]    # road         -> gray
+  2:  [54, 235, 56]      # vegetation   -> green
+  3:  [61, 93, 255]      # water        -> blue
+  4:  [220, 220, 220]    # snow         -> white

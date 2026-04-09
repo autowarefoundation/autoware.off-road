@@ -1,0 +1,30 @@
+dataset: "Rellis_3D"
+src_image_pattern: "Rellis_3D/Rellis_3D_pylon_camera_node/**/*.jpg"
+src_gt_mask_pattern: "Rellis_3D/Rellis_3D_pylon_camera_node_label_id/**/*.png"
+exclude_patterns: []
+dst_image_dir: "AORAS/FreespaceSeg/Rellis_3D/Rellis_3D/images"
+dst_gt_mask_dir: "AORAS/FreespaceSeg/Rellis_3D/Rellis_3D/gt_masks"
+filename_mapping: {}
+overwrite_existing: false
+color_thresh: 3
+label_to_id_mapping:
+  0:  0   # void    -> background
+  1:  1   # dirt    -> drivable
+  3:  1   # grass   -> drivable
+  4:  0   # tree    -> object
+  5:  0   # pole    -> object
+  6:  0   # water   -> background
+  7:  0   # sky     -> background
+  8:  0   # vehicle -> object
+  9:  0   # object  -> object
+  10: 1   # asphalt -> drivable
+  12: 0   # building-> background
+  15: 0   # log     -> object
+  17: 0   # person  -> object
+  18: 0   # fence   -> object
+  19: 0   # bush    -> object
+  23: 1   # concrete-> drivable
+  27: 0   # barrier -> object
+  31: 1   # puddle  -> drivable
+  33: 1   # mud     -> drivable
+  34: 1   # rubble  -> drivable

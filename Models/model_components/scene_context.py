@@ -39,9 +39,8 @@ class SceneContext(nn.Module):
         c2 = self.sigmoid(c2)
 
         # Reshape
-        c3 = c2.reshape([10, 20])
-        c3 = c3.unsqueeze(0)
-        c3 = c3.unsqueeze(0)
+        batch_size = c2.shape[0]
+        c3 = c2.view(batch_size, 1, 10, 20)
 
         # Context
         c4 = self.context_layer_3(c3)

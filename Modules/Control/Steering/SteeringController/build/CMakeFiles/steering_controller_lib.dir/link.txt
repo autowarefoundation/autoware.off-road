@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -shared -Wl,-soname,libsteering_controller_lib.so -o libsteering_controller_lib.so CMakeFiles/steering_controller_lib.dir/src/steering_controller.cpp.o 
