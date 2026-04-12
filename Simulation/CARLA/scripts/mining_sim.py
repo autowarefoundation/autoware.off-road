@@ -233,7 +233,8 @@ class World(object):
         self.traffic_manager = traffic_manager
         self.actor_role_name = args.rolename
         self.lead_truck_enabled = args.lead_truck
-        self.npc_truck = None
+        self.num_trucks = args.num_trucks
+        self.npc_trucks = []  # list of spawned NPC mining trucks
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -335,42 +336,80 @@ class World(object):
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)
             
-        # Spawn the lead mining truck in front of the ego vehicle (only when --lead_truck true)
-        # First destroy existing if any
-        if self.npc_truck is not None:
-            self.npc_truck.destroy()
-            self.npc_truck = None
+        # Destroy any previously spawned NPC trucks
+        for truck in self.npc_trucks:
+            try:
+                truck.destroy()
+            except Exception:
+                pass
+        self.npc_trucks = []
 
-        if self.lead_truck_enabled:
-            npc_bp_list = blueprint_lib.filter('vehicle.miningtruck.miningtruck*')
-            if not npc_bp_list:
-                npc_bp_list = blueprint_lib.filter('*mining*')
-            if npc_bp_list:
-                npc_bp = npc_bp_list[0]
+        # Resolve mining truck blueprint once
+        npc_bp_list = blueprint_lib.filter('vehicle.miningtruck.miningtruck*')
+        if not npc_bp_list:
+            npc_bp_list = blueprint_lib.filter('*mining*')
+
+        if npc_bp_list:
+            npc_bp = npc_bp_list[0]
+            if npc_bp.has_attribute('terramechanics'):
+                npc_bp.set_attribute('terramechanics', 'true')
+
+            # --- Lead truck: spawn directly in front of the ego (--lead_truck true) ---
+            if self.lead_truck_enabled:
                 npc_bp.set_attribute('role_name', 'lead_truck')
-                if npc_bp.has_attribute('terramechanics'):
-                    npc_bp.set_attribute('terramechanics', 'true')
                 if npc_bp.has_attribute('color'):
                     color = random.choice(npc_bp.get_attribute('color').recommended_values)
                     npc_bp.set_attribute('color', color)
 
                 player_transform = self.player.get_transform()
                 forward_vector = player_transform.get_forward_vector()
-
-                # Spawn 15 meters in front (larger gap for truck-to-truck)
                 spawn_location = player_transform.location + forward_vector * 15.0
-                spawn_location.z += 2.0  # Avoid ground collision
+                spawn_location.z += 2.0
+                lead_spawn = carla.Transform(spawn_location, player_transform.rotation)
 
-                npc_spawn_point = carla.Transform(spawn_location, player_transform.rotation)
-
-                self.npc_truck = self.world.try_spawn_actor(npc_bp, npc_spawn_point)
-                if self.npc_truck is not None:
-                    self.npc_truck.set_autopilot(True, self.traffic_manager.get_port())
-                    self.modify_vehicle_physics(self.npc_truck)
-                    self.traffic_manager.ignore_lights_percentage(self.npc_truck, 100)
-                    self.traffic_manager.auto_lane_change(self.npc_truck, False)
+                truck = self.world.try_spawn_actor(npc_bp, lead_spawn)
+                if truck is not None:
+                    try:
+                        truck.set_autopilot(True, self.traffic_manager.get_port())
+                        self.modify_vehicle_physics(truck)
+                        self.traffic_manager.ignore_lights_percentage(truck, 100.0)
+                        self.traffic_manager.auto_lane_change(truck, False)
+                    except Exception as e:
+                        print(f"Warning: lead truck autopilot setup failed: {e}")
+                    self.npc_trucks.append(truck)
                 else:
-                    print("Failed to spawn lead mining truck at the requested location.")
+                    print("Failed to spawn lead mining truck.")
+
+            # --- Extra trucks: scatter across random map spawn points (--num_trucks N) ---
+            if self.num_trucks > 0:
+                all_spawn_points = self.map.get_spawn_points()
+                # Exclude the ego's spawn point to avoid overlap
+                ego_loc = self.player.get_transform().location
+                candidates = [sp for sp in all_spawn_points
+                              if sp.location.distance(ego_loc) > 20.0]
+                random.shuffle(candidates)
+
+                spawned = 0
+                for i, sp in enumerate(candidates):
+                    if spawned >= self.num_trucks:
+                        break
+                    npc_bp.set_attribute('role_name', f'npc_truck_{i}')
+                    if npc_bp.has_attribute('color'):
+                        color = random.choice(npc_bp.get_attribute('color').recommended_values)
+                        npc_bp.set_attribute('color', color)
+                    truck = self.world.try_spawn_actor(npc_bp, sp)
+                    if truck is not None:
+                        try:
+                            truck.set_autopilot(True, self.traffic_manager.get_port())
+                            self.modify_vehicle_physics(truck)
+                            self.traffic_manager.ignore_lights_percentage(truck, 100.0)
+                            self.traffic_manager.auto_lane_change(truck, False)
+                        except Exception as e:
+                            print(f"Warning: NPC truck_{i} autopilot setup failed: {e}")
+                        self.npc_trucks.append(truck)
+                        spawned += 1
+
+                print(f"Spawned {spawned}/{self.num_trucks} requested NPC mining trucks.")
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -480,12 +519,12 @@ class World(object):
                 pass
             self.player = None
             
-        if self.npc_truck is not None:
+        for truck in self.npc_trucks:
             try:
-                self.npc_truck.destroy()
+                truck.destroy()
             except Exception:
                 pass
-            self.npc_truck = None
+        self.npc_trucks = []
 
         if self.dataset_recorder is not None:
             self.dataset_recorder.destroy()
@@ -1706,12 +1745,15 @@ class DatasetRecorder:
         self.parent = parent_actor
         self.output_dir = output_dir
         self.recording = False
-        self.frame_count = 0
+        self.frame_count = 0       # set on toggle-on via _next_frame_index()
+        self._last_save_time = 0.0 # wall-clock time of last saved pair (2 Hz gate)
         self.IMG_W = hud.dim[0]
         self.IMG_H = hud.dim[1]
 
         self._rgb_array = None
         self._rgb_frame = -1
+        self._depth_array = None   # float32 (H, W) depth in metres
+        self._depth_frame = -1
         self._lidar_points = None
         self._lidar_frame = -1
 
@@ -1727,6 +1769,11 @@ class DatasetRecorder:
             carla.Rotation(pitch=0.0)
         )
 
+        # Initialise sensor handles to None so destroy() is always safe
+        self.camera       = None
+        self.depth_camera = None
+        self.lidar        = None
+
         # RGB camera — same resolution, gamma, and FOV as the display camera
         cam_bp = bp_lib.find('sensor.camera.rgb')
         cam_bp.set_attribute('image_size_x', str(self.IMG_W))
@@ -1734,24 +1781,99 @@ class DatasetRecorder:
         if cam_bp.has_attribute('gamma'):
             cam_bp.set_attribute('gamma', str(gamma_correction))
         self.fov = cam_bp.get_attribute('fov').as_float()
-        self.camera = world.spawn_actor(cam_bp, sensor_transform, attach_to=parent_actor)
+        try:
+            self.camera = world.spawn_actor(cam_bp, sensor_transform, attach_to=parent_actor)
+        except Exception as e:
+            print(f'DatasetRecorder: failed to spawn RGB camera: {e}')
 
-        # LiDAR — only set range to match the display LiDAR; leave all other
-        # attributes at blueprint defaults so the sensor spec is identical
+        # Pre-compute the 3×4 projection matrix P = K @ [R|t] at net resolution (640×320).
+        # CARLA LiDAR frame: x=fwd, y=left, z=up.
+        # OpenCV camera frame: x=right, y=down, z=fwd → cam_x=-lidar_y, cam_y=-lidar_z, cam_z=lidar_x
+        # Rotation R (LiDAR → camera):
+        #   R = [[ 0, -1,  0],
+        #        [ 0,  0, -1],
+        #        [ 1,  0,  0]]
+        # Camera and LiDAR are co-mounted → t = [0, 0, 0]
+        # Intrinsics at net resolution (640×320):
+        #   f_net = NET_W / (2 * tan(fov/2))
+        #   cx_net = NET_W / 2,  cy_net = NET_H / 2
+        # P = K @ [R|t] (flattened row-major to shape (12,))
+        f_net  = self._NET_W / (2.0 * np.tan(np.radians(self.fov / 2.0)))
+        cx_net = self._NET_W / 2.0
+        cy_net = self._NET_H / 2.0
+        K = np.array([[f_net, 0.0,   cx_net],
+                      [0.0,   f_net, cy_net],
+                      [0.0,   0.0,   1.0   ]], dtype=np.float32)
+        Rt = np.array([[ 0.0, -1.0,  0.0, 0.0],
+                       [ 0.0,  0.0, -1.0, 0.0],
+                       [ 1.0,  0.0,  0.0, 0.0]], dtype=np.float32)
+        self._cam_params = (K @ Rt).flatten()  # shape (12,)
+
+        # Precompute per-pixel (v-cy) and (u-cx) grids at net resolution.
+        # Used to back-project depth pixels → 3-D world points.
+        v_net, u_net = np.mgrid[0:self._NET_H, 0:self._NET_W]
+        self._v_minus_cy = (v_net - cy_net).astype(np.float32)  # (NET_H, NET_W)
+        self._u_minus_cx = (u_net - cx_net).astype(np.float32)  # (NET_H, NET_W)
+
+        # Depth camera — same mount, resolution, and FOV as the RGB camera
+        # CARLA depth encoding: depth_m = (R + G*256 + B*65536) / (256^3 - 1) * 1000
+        depth_bp = bp_lib.find('sensor.camera.depth')
+        depth_bp.set_attribute('image_size_x', str(self.IMG_W))
+        depth_bp.set_attribute('image_size_y', str(self.IMG_H))
+        depth_bp.set_attribute('fov', str(self.fov))
+        try:
+            self.depth_camera = world.spawn_actor(depth_bp, sensor_transform, attach_to=parent_actor)
+        except Exception as e:
+            print(f'DatasetRecorder: failed to spawn depth camera: {e}')
+
+        # LiDAR — only set range; leave other attributes at blueprint defaults
         lidar_bp = bp_lib.find('sensor.lidar.ray_cast')
         lidar_bp.set_attribute('range', '50')
-        self.lidar = world.spawn_actor(lidar_bp, sensor_transform, attach_to=parent_actor)
+        try:
+            self.lidar = world.spawn_actor(lidar_bp, sensor_transform, attach_to=parent_actor)
+        except Exception as e:
+            print(f'DatasetRecorder: failed to spawn LiDAR: {e}')
 
         weak_self = weakref.ref(self)
-        self.camera.listen(lambda img: DatasetRecorder._on_rgb(weak_self, img))
-        self.lidar.listen(lambda pts: DatasetRecorder._on_lidar(weak_self, pts))
+        if self.camera is not None:
+            self.camera.listen(lambda img: DatasetRecorder._on_rgb(weak_self, img))
+        if self.depth_camera is not None:
+            self.depth_camera.listen(lambda img: DatasetRecorder._on_depth(weak_self, img))
+        if self.lidar is not None:
+            self.lidar.listen(lambda pts: DatasetRecorder._on_lidar(weak_self, pts))
+
+    def _next_frame_index(self):
+        """Scan images/ and return the next available frame index (0 if empty)."""
+        max_idx = -1
+        img_dir = os.path.join(self.output_dir, 'images')
+        if os.path.isdir(img_dir):
+            for fname in os.listdir(img_dir):
+                stem, _ = os.path.splitext(fname)
+                try:
+                    idx = int(stem)
+                    if idx > max_idx:
+                        max_idx = idx
+                except ValueError:
+                    pass
+        return max_idx + 1
 
     def toggle(self, hud=None):
         self.recording = not self.recording
         if self.recording:
-            os.makedirs(os.path.join(self.output_dir, 'rgb'), exist_ok=True)
-            os.makedirs(os.path.join(self.output_dir, 'elevation'), exist_ok=True)
-            msg = 'Elevation Dataset Recording ON -> %s' % self.output_dir
+            os.makedirs(os.path.join(self.output_dir, 'images'),              exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'gt_lidar_elevations'), exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'gt_depth_elevations'), exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'gt_bev_lidar_elevations'), exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'gt_bev_depth_elevations'), exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'camera_params'),       exist_ok=True)
+            # Save shared camera params once (same for every frame)
+            cam_path = os.path.join(self.output_dir, 'camera_params', 'camera_params.npy')
+            if not os.path.exists(cam_path):
+                np.save(cam_path, self._cam_params)
+            self.frame_count = self._next_frame_index()
+            self._last_save_time = 0.0  # let first frame save immediately
+            msg = 'Elevation Dataset Recording ON -> %s (next frame: %06d)' % (
+                self.output_dir, self.frame_count)
         else:
             msg = 'Elevation Dataset Recording OFF (%d frames saved)' % self.frame_count
         print(msg)
@@ -1768,6 +1890,19 @@ class DatasetRecorder:
         self._rgb_frame = image.frame
 
     @staticmethod
+    def _on_depth(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        # CARLA depth raw format: BGRA where depth_m = (R + G*256 + B*65536)/(256^3-1)*1000
+        arr = np.frombuffer(image.raw_data, dtype=np.uint8).reshape((image.height, image.width, 4))
+        R = arr[:, :, 2].astype(np.float32)
+        G = arr[:, :, 1].astype(np.float32)
+        B = arr[:, :, 0].astype(np.float32)
+        self._depth_array = (R + G * 256.0 + B * 65536.0) / (256.0 ** 3 - 1.0) * 1000.0
+        self._depth_frame = image.frame
+
+    @staticmethod
     def _on_lidar(weak_self, point_cloud):
         self = weak_self()
         if not self:
@@ -1780,24 +1915,159 @@ class DatasetRecorder:
         if (self.recording
                 and self._rgb_array is not None
                 and abs(self._rgb_frame - self._lidar_frame) <= 2):
-            self._save_pair(point_cloud.frame)
+            self._save_pair()
 
-    _NET_W = 640
-    _NET_H = 320
+    _NET_W  = 640
+    _NET_H  = 320
+    # Elevation bin constants — must match LoadDataElevation / elevation_head.py
+    _H_MIN   = -0.50  # metres
+    _H_STEP  =  0.05  # metres
+    _NUM_BINS = 40
+    # BEV grid parameters
+    _BEV_RES    = 10    # pixels per metre
+    _BEV_X_MAX  = 60.0  # forward range (metres)
+    _BEV_Y_HALF = 30.0  # half lateral range (metres); total width = 60 m
 
-    def _save_pair(self, frame):
+    def _elev_to_png(self, elev_map):
+        """Convert a float32 elevation map (metres, NaN=empty) to a scaled uint8 PNG.
+        Valid pixels: binned 0–39 then scaled to 96–255. Empty pixels: 0."""
+        valid = ~np.isnan(elev_map)
+        filled = np.where(valid, elev_map, self._H_MIN)
+        bins = np.floor((filled - self._H_MIN) / self._H_STEP).astype(np.int32)
+        bins = np.clip(bins, 0, self._NUM_BINS - 1)
+        out = (bins * 159 // (self._NUM_BINS - 1) + 96).astype(np.uint8)
+        out[~valid] = 0
+        return out
+
+    @staticmethod
+    def _fill_holes(elev_map):
+        """Fill NaN holes in a float32 elevation map using nearest-valid-neighbour.
+
+        Uses a distance transform to find the closest valid pixel for each empty
+        pixel.  Works in float32 before bin-encoding so no precision is lost.
+        If the map is entirely empty, it is returned unchanged (all-NaN)."""
+        from scipy.ndimage import distance_transform_edt
+        valid = ~np.isnan(elev_map)
+        if not valid.any():
+            return elev_map
+        _, idx = distance_transform_edt(~valid, return_indices=True)
+        return elev_map[idx[0], idx[1]]
+
+    def _bev_from_lidar(self, lidar_points):
+        """Splat LiDAR (x=fwd, y=left, z=up) into a BEV elevation grid.
+        Returns float32 (BEV_H, BEV_W) with NaN where no points land."""
+        BEV_H = int(self._BEV_X_MAX * self._BEV_RES)
+        BEV_W = int(self._BEV_Y_HALF * 2 * self._BEV_RES)
+
+        x = lidar_points[:, 0]  # fwd
+        y = lidar_points[:, 1]  # left
+        z = lidar_points[:, 2]  # up = elevation
+
+        # BEV row: fwd distance, near at bottom → row decreases with x
+        row = (BEV_H - 1 - (x * self._BEV_RES)).astype(np.int32)
+        # BEV col: left is positive → col decreases with y
+        col = (self._BEV_Y_HALF * self._BEV_RES - y * self._BEV_RES).astype(np.int32)
+
+        valid = (x > 0.5) & (row >= 0) & (row < BEV_H) & (col >= 0) & (col < BEV_W)
+        row, col, z_v, x_v = row[valid], col[valid], z[valid], x[valid]
+
+        # Far-to-near: closer points overwrite farther ones
+        order = np.argsort(x_v)
+        bev = np.full((BEV_H, BEV_W), np.nan, dtype=np.float32)
+        bev[row[order], col[order]] = z_v[order]
+        return bev
+
+    def _bev_from_depth(self, depth_net):
+        """Back-project depth image → BEV elevation grid using camera_params.
+        P = cam_params.reshape(3,4): extracts f, cx, cy.
+        World frame: x=fwd (depth), y=left, z=up (elevation).
+        Returns float32 (BEV_H, BEV_W) with NaN where depth > 50 m."""
+        BEV_H = int(self._BEV_X_MAX * self._BEV_RES)
+        BEV_W = int(self._BEV_Y_HALF * 2 * self._BEV_RES)
+
+        # Extract intrinsics from camera_params: P=[[cx,-f,0,0],[cy,0,-f,0],[1,0,0,0]]
+        P = self._cam_params.reshape(3, 4)
+        f  = -P[0, 1]   # focal length at net resolution
+        cx =  P[0, 0]
+        cy =  P[1, 0]
+
+        d = depth_net  # (NET_H, NET_W), capped at 50 m
+        world_x = d                                              # forward
+        world_y = -(self._u_minus_cx * d / f)                   # left
+        world_z = -(self._v_minus_cy * d / f)                   # up = elevation
+
+        row = (BEV_H - 1 - (world_x * self._BEV_RES)).astype(np.int32)
+        col = (self._BEV_Y_HALF * self._BEV_RES - world_y * self._BEV_RES).astype(np.int32)
+
+        row, col = row.ravel(), col.ravel()
+        world_x_r, world_z_r = world_x.ravel(), world_z.ravel()
+
+        valid = (world_x_r > 0.5) & (row >= 0) & (row < BEV_H) & (col >= 0) & (col < BEV_W)
+        row, col = row[valid], col[valid]
+        x_v, z_v = world_x_r[valid], world_z_r[valid]
+
+        order = np.argsort(x_v)
+        bev = np.full((BEV_H, BEV_W), np.nan, dtype=np.float32)
+        bev[row[order], col[order]] = z_v[order]
+        return bev
+
+    def _save_pair(self):
+        # 2 Hz gate: skip if less than 0.5 s since the last save
+        now = time.time()
+        if now - self._last_save_time < 0.5:
+            return
+        self._last_save_time = now
+
         elevation = self._build_elevation_map()
-        # Resize both to 640×320 to match the input size expected by all networks
-        rgb_resized  = cv2.resize(self._rgb_array,
-                                  (self._NET_W, self._NET_H),
-                                  interpolation=cv2.INTER_LINEAR)
+
+        # --- images/<frame>.png  (640×320 BGR) ---
+        rgb_resized = cv2.resize(self._rgb_array,
+                                 (self._NET_W, self._NET_H),
+                                 interpolation=cv2.INTER_LINEAR)
+
+        # --- gt_lidar_elevations ---
         elev_resized = cv2.resize(elevation,
                                   (self._NET_W, self._NET_H),
-                                  interpolation=cv2.INTER_NEAREST)  # nearest to preserve height values
-        rgb_path  = os.path.join(self.output_dir, 'rgb',       '%08d.png' % frame)
-        elev_path = os.path.join(self.output_dir, 'elevation', '%08d.npy' % frame)
-        cv2.imwrite(rgb_path, rgb_resized)
-        np.save(elev_path, elev_resized)
+                                  interpolation=cv2.INTER_NEAREST)
+        elev_resized = self._fill_holes(elev_resized)
+        gt_lidar = self._elev_to_png(elev_resized)
+
+        # --- gt_depth_elevations ---
+        # Back-project: elev = -(v - cy) * depth / f.  Cap at 50 m (matches LiDAR).
+        if self._depth_array is not None:
+            depth_net = cv2.resize(self._depth_array,
+                                   (self._NET_W, self._NET_H),
+                                   interpolation=cv2.INTER_NEAREST)
+            depth_net = np.clip(depth_net, 0.0, 60.0)
+            P = self._cam_params.reshape(3, 4)
+            f_net = -P[0, 1]
+            depth_elev = -(self._v_minus_cy * depth_net / f_net).astype(np.float32)
+            gt_depth = self._elev_to_png(depth_elev)
+        else:
+            depth_net = None
+            gt_depth  = np.zeros((self._NET_H, self._NET_W), dtype=np.uint8)
+
+        # --- gt_bev_lidar_elevations ---
+        bev_lidar    = self._bev_from_lidar(self._lidar_points)
+        gt_bev_lidar = self._elev_to_png(bev_lidar)
+
+        # --- gt_bev_depth_elevations ---
+        BEV_H = int(self._BEV_X_MAX * self._BEV_RES)
+        BEV_W = int(self._BEV_Y_HALF * 2 * self._BEV_RES)
+        if depth_net is not None:
+            bev_depth    = self._bev_from_depth(depth_net)
+            gt_bev_depth = self._elev_to_png(bev_depth)
+        else:
+            gt_bev_depth = np.zeros((BEV_H, BEV_W), dtype=np.uint8)
+
+        # --- camera_params/ (written once in toggle) ---
+
+        stem = '%06d' % self.frame_count
+        cv2.imwrite(os.path.join(self.output_dir, 'images',              stem + '.png'), rgb_resized)
+        cv2.imwrite(os.path.join(self.output_dir, 'gt_lidar_elevations', stem + '.png'), cv2.flip(gt_lidar, 1))
+        cv2.imwrite(os.path.join(self.output_dir, 'gt_depth_elevations', stem + '.png'), gt_depth)
+        cv2.imwrite(os.path.join(self.output_dir, 'gt_bev_lidar_elevations', stem + '.png'), cv2.flip(gt_bev_lidar, 1))
+        cv2.imwrite(os.path.join(self.output_dir, 'gt_bev_depth_elevations', stem + '.png'), gt_bev_depth)
         self.frame_count += 1
 
     def _build_elevation_map(self):
@@ -1840,20 +2110,25 @@ class DatasetRecorder:
         return elevation
 
     def destroy(self):
-        if self.camera is not None:
-            self.camera.stop()
-            try:
-                self.camera.destroy()
-            except Exception:
-                pass
-            self.camera = None
-        if self.lidar is not None:
-            self.lidar.stop()
-            try:
-                self.lidar.destroy()
-            except Exception:
-                pass
-            self.lidar = None
+        # Stop recording first so in-flight callbacks don't call _save_pair
+        # after sensors have been destroyed (prevents std::exception on restart)
+        self.recording = False
+        # Stop all sensors before destroying any — lets in-flight callbacks drain
+        # before the underlying C++ objects are torn down (avoids std::exception
+        # crash when Backspace is pressed while a LiDAR/depth callback is live).
+        for sensor in (self.camera, self.depth_camera, self.lidar):
+            if sensor is not None:
+                sensor.stop()
+        time.sleep(0.1)
+        for sensor in (self.camera, self.depth_camera, self.lidar):
+            if sensor is not None:
+                try:
+                    sensor.destroy()
+                except Exception:
+                    pass
+        self.camera = None
+        self.depth_camera = None
+        self.lidar = None
 
 
 # ==============================================================================
@@ -1988,6 +2263,9 @@ def main():
     argparser.add_argument(
         '--lead_truck', type=lambda x: x.lower() == 'true', default=False,
         help='Spawn a lead mining truck in front of the ego vehicle (default: false)')
+    argparser.add_argument(
+        '--num_trucks', type=int, default=0, metavar='N',
+        help='Number of additional mining trucks to spawn at random map locations with autopilot (default: 0)')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]

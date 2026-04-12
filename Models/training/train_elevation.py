@@ -33,7 +33,7 @@ def main():
     # ── Load datasets ─────────────────────────────────────────────────────────
     datasets_info = {
         name: {
-            'labels':        os.path.join(args.root, name, name, 'gt_masks/'),
+            'labels':        os.path.join(args.root, name, name, 'gt_elevations/'),
             'images':        os.path.join(args.root, name, name, 'images/'),
             'camera_params': os.path.join(args.root, name, name, 'camera_params/'),
         }
