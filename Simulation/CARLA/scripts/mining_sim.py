@@ -496,15 +496,25 @@ class World(object):
             self.lane_invasion_sensor.sensor,
             self.gnss_sensor.sensor,
             self.imu_sensor.sensor]
-            
+
+        # Stop all sensors first, then sleep so in-flight callbacks can drain
+        # before the underlying C++ objects are torn down.  Destroying immediately
+        # after stop() (without a gap) races with the sensor thread and causes
+        # the libc++abi std::exception crash on restart.
         for sensor in sensors:
             if sensor is not None:
-                sensor.stop()
+                try:
+                    sensor.stop()
+                except Exception:
+                    pass
+        time.sleep(0.1)
+        for sensor in sensors:
+            if sensor is not None:
                 try:
                     sensor.destroy()
                 except Exception:
                     pass
-                    
+
         # Clear sensor references so they aren't destroyed twice
         self.camera_manager.sensor = None
         self.collision_sensor.sensor = None
@@ -512,23 +522,26 @@ class World(object):
         self.gnss_sensor.sensor = None
         self.imu_sensor.sensor = None
 
+        # Destroy dataset_recorder before the player — its sensors are attached
+        # to the player, so player.destroy() would invalidate their C++ objects
+        # and cause sensor.stop() to throw std::exception on the next restart.
+        if self.dataset_recorder is not None:
+            self.dataset_recorder.destroy()
+            self.dataset_recorder = None
+
         if self.player is not None:
             try:
                 self.player.destroy()
             except Exception:
                 pass
             self.player = None
-            
+
         for truck in self.npc_trucks:
             try:
                 truck.destroy()
             except Exception:
                 pass
         self.npc_trucks = []
-
-        if self.dataset_recorder is not None:
-            self.dataset_recorder.destroy()
-            self.dataset_recorder = None
 
 
 # ==============================================================================
@@ -2029,8 +2042,10 @@ class DatasetRecorder:
         elev_resized = cv2.resize(elevation,
                                   (self._NET_W, self._NET_H),
                                   interpolation=cv2.INTER_NEAREST)
+        elev_valid = ~np.isnan(elev_resized)   # which pixels had a direct LiDAR hit
         elev_resized = self._fill_holes(elev_resized)
         gt_lidar = self._elev_to_png(elev_resized)
+        gt_lidar[~elev_valid] = 0              # sky / no-hit pixels must stay 0
 
         # --- gt_depth_elevations ---
         # Back-project: elev = -(v - cy) * depth / f.  Cap at 50 m (matches LiDAR).
