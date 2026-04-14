@@ -46,6 +46,7 @@ Use ARROWS or WASD keys for control.
 
     R            : toggle recording images to disk
     E            : toggle elevation dataset recording (RGB + GT elevation from LiDAR)
+    J            : toggle segmentation dataset recording (RGB + semantic label image)
 
     CTRL + R     : toggle recording of simulation (replacing any previous)
     CTRL + P     : start replaying last recorded simulation
@@ -64,6 +65,7 @@ Use ARROWS or WASD keys for control.
 import os
 import re
 import sys
+import yaml
 
 # Remove Isaac Sim from LD_LIBRARY_PATH to avoid spdlog conflicts with ROS2 Humble
 if "LD_LIBRARY_PATH" in os.environ:
@@ -138,6 +140,7 @@ try:
     from pygame.locals import K_x
     from pygame.locals import K_z
     from pygame.locals import K_e
+    from pygame.locals import K_j
     from pygame.locals import K_MINUS
     from pygame.locals import K_EQUALS
 except ImportError:
@@ -227,14 +230,18 @@ def get_actor_blueprints(world, filter, generation):
 
 
 class World(object):
-    def __init__(self, carla_world, hud, traffic_manager, args):
+    def __init__(self, carla_world, hud, traffic_manager, args, client=None):
         self.world = carla_world
         self.sync = args.sync
+        self.client = client
         self.traffic_manager = traffic_manager
         self.actor_role_name = args.rolename
         self.lead_truck_enabled = args.lead_truck
         self.num_trucks = args.num_trucks
         self.npc_trucks = []  # list of spawned NPC mining trucks
+        self.num_pedestrians = args.num_pedestrian
+        self.npc_pedestrians = []  # list of (walker_actor, controller_actor) tuples
+        self._ped_walk_data = []   # list of [speed, direction, next_turn_time] for manual walk
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -251,6 +258,9 @@ class World(object):
         self.radar_sensor = None
         self.camera_manager = None
         self.dataset_recorder = None
+        self.seg_recorder = None
+        self._seg_config = args.seg_config
+        self._tag_config = args.tag_config
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = args.filter
@@ -336,13 +346,61 @@ class World(object):
             self.show_vehicle_telemetry = False
             self.modify_vehicle_physics(self.player)
             
-        # Destroy any previously spawned NPC trucks
-        for truck in self.npc_trucks:
+        # Deregister and destroy NPC actors safely.
+        # Step 1: swap out lists so _tick_pedestrians() and game-loop code see empty lists.
+        trucks_to_destroy = self.npc_trucks
+        self.npc_trucks = []
+        peds_to_destroy = self.npc_pedestrians
+        self.npc_pedestrians = []
+        self._ped_walk_data = []
+
+        # Step 2: disable autopilot on trucks so the Traffic Manager deregisters them
+        # before we destroy the actors (TM runs on its own C++ thread).
+        for truck in trucks_to_destroy:
             try:
-                truck.destroy()
+                truck.set_autopilot(False, self.traffic_manager.get_port())
             except Exception:
                 pass
-        self.npc_trucks = []
+
+        # Step 3: tick the server so TM deregistration and any pending apply_control
+        # commands are fully processed before the actors are removed.
+        if trucks_to_destroy or peds_to_destroy:
+            try:
+                if self.sync:
+                    self.world.tick()
+                else:
+                    self.world.wait_for_tick()
+            except Exception:
+                pass
+
+        # Step 4: destroy all NPC actors atomically via apply_batch (fire-and-forget).
+        # Step 3 already flushed all pending apply_control / TM commands with a tick,
+        # so the server will process these destroy commands cleanly on its next tick
+        # without racing against in-flight C++ thread work.
+        # We deliberately use non-sync apply_batch to avoid blocking the game loop.
+        actors_to_destroy = list(trucks_to_destroy)
+        for walker, controller in peds_to_destroy:
+            if controller is not None:
+                try:
+                    controller.stop()
+                except Exception:
+                    pass
+                actors_to_destroy.append(controller)
+            if walker is not None:
+                actors_to_destroy.append(walker)
+
+        if actors_to_destroy and self.client is not None:
+            try:
+                self.client.apply_batch(
+                    [carla.command.DestroyActor(x) for x in actors_to_destroy])
+            except Exception:
+                pass
+        else:
+            for actor in actors_to_destroy:
+                try:
+                    actor.destroy()
+                except Exception:
+                    pass
 
         # Resolve mining truck blueprint once
         npc_bp_list = blueprint_lib.filter('vehicle.miningtruck.miningtruck*')
@@ -411,6 +469,42 @@ class World(object):
 
                 print(f"Spawned {spawned}/{self.num_trucks} requested NPC mining trucks.")
 
+        # --- Pedestrians: spawn walkers with manual random-walk (--num_pedestrian N) ---
+        if self.num_pedestrians > 0:
+            walker_bp_list = blueprint_lib.filter('walker.pedestrian.*')
+
+            # Prefer navmesh spawn points; fall back to vehicle spawn points.
+            nav_locations = [self.world.get_random_location_from_navigation()
+                             for _ in range(self.num_pedestrians * 3)]
+            nav_locations = [loc for loc in nav_locations if loc is not None]
+            if not nav_locations:
+                nav_locations = [sp.location for sp in self.map.get_spawn_points()]
+            if not nav_locations:
+                print("Warning: no spawn locations available for pedestrians.")
+
+            self._ped_walk_data = []
+            spawned_peds = 0
+            loc_pool = list(nav_locations)
+            random.shuffle(loc_pool)
+            pool_iter = iter(loc_pool)
+            for _ in range(self.num_pedestrians):
+                spawn_loc = next(pool_iter, None)
+                if spawn_loc is None:
+                    break
+                walker_bp = random.choice(walker_bp_list)
+                if walker_bp.has_attribute('is_invincible'):
+                    walker_bp.set_attribute('is_invincible', 'false')
+                walker = self.world.try_spawn_actor(walker_bp, carla.Transform(spawn_loc))
+                if walker is None:
+                    continue
+                self.npc_pedestrians.append((walker, None))
+                angle = random.uniform(0, 2 * math.pi)
+                speed = 1.0 + random.random()
+                next_turn = time.time() + random.uniform(3.0, 8.0)
+                self._ped_walk_data.append([speed, angle, next_turn])
+                spawned_peds += 1
+            print(f"Spawned {spawned_peds}/{self.num_pedestrians} requested pedestrians.")
+
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
@@ -427,6 +521,14 @@ class World(object):
         self.dataset_recorder = DatasetRecorder(self.player, self.hud, self._gamma)
         if was_recording:
             self.dataset_recorder.recording = True
+
+        # Recreate segmentation dataset recorder
+        was_seg_recording = self.seg_recorder.recording if self.seg_recorder is not None else False
+        if self.seg_recorder is not None:
+            self.seg_recorder.destroy()
+        self.seg_recorder = SegmentationDatasetRecorder(self.player, self.hud, self._seg_config, self._tag_config)
+        if was_seg_recording:
+            self.seg_recorder.recording = True
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
         self.traffic_manager.update_vehicle_lights(self.player, True)
@@ -476,6 +578,28 @@ class World(object):
 
     def tick(self, clock):
         self.hud.tick(self, clock)
+        self._tick_pedestrians()
+
+    def _tick_pedestrians(self):
+        now = time.time()
+        for i, (walker, _) in enumerate(self.npc_pedestrians):
+            if walker is None or not walker.is_alive:
+                continue
+            data = self._ped_walk_data[i]
+            speed, angle, next_turn = data
+            if now >= next_turn:
+                angle = random.uniform(0, 2 * math.pi)
+                speed = 1.0 + random.random()
+                data[1] = angle
+                data[0] = speed
+                data[2] = now + random.uniform(3.0, 8.0)
+            control = carla.WalkerControl()
+            control.speed = speed
+            control.direction = carla.Vector3D(math.cos(angle), math.sin(angle), 0.0)
+            try:
+                walker.apply_control(control)
+            except Exception:
+                pass
 
     def render(self, display):
         self.camera_manager.render(display)
@@ -529,6 +653,10 @@ class World(object):
             self.dataset_recorder.destroy()
             self.dataset_recorder = None
 
+        if self.seg_recorder is not None:
+            self.seg_recorder.destroy()
+            self.seg_recorder = None
+
         if self.player is not None:
             try:
                 self.player.destroy()
@@ -536,12 +664,35 @@ class World(object):
                 pass
             self.player = None
 
-        for truck in self.npc_trucks:
+        trucks_to_destroy = self.npc_trucks
+        self.npc_trucks = []
+        peds_to_destroy = self.npc_pedestrians
+        self.npc_pedestrians = []
+        self._ped_walk_data = []
+
+        actors_to_destroy = list(trucks_to_destroy)
+        for walker, controller in peds_to_destroy:
+            if controller is not None:
+                try:
+                    controller.stop()
+                except Exception:
+                    pass
+                actors_to_destroy.append(controller)
+            if walker is not None:
+                actors_to_destroy.append(walker)
+
+        if actors_to_destroy and self.client is not None:
             try:
-                truck.destroy()
+                self.client.apply_batch(
+                    [carla.command.DestroyActor(x) for x in actors_to_destroy])
             except Exception:
                 pass
-        self.npc_trucks = []
+        else:
+            for actor in actors_to_destroy:
+                try:
+                    actor.destroy()
+                except Exception:
+                    pass
 
 
 # ==============================================================================
@@ -650,6 +801,8 @@ class KeyboardControl(object):
                     world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
                 elif event.key == K_e:
                     world.dataset_recorder.toggle(world.hud)
+                elif event.key == K_j:
+                    world.seg_recorder.toggle(world.hud)
                 elif event.key == K_r and not (pygame.key.get_mods() & KMOD_CTRL):
                     world.camera_manager.toggle_recording()
                 elif event.key == K_r and (pygame.key.get_mods() & KMOD_CTRL):
@@ -2147,6 +2300,205 @@ class DatasetRecorder:
 
 
 # ==============================================================================
+# -- SegmentationDatasetRecorder -----------------------------------------------
+# ==============================================================================
+
+
+class SegmentationDatasetRecorder:
+    """
+    Records paired RGB images and semantic segmentation label images.
+    Toggle with the J key.
+
+    Spawns a dedicated front-facing RGB camera and a semantic segmentation
+    camera at the same mount point.  On each frame where both fire together,
+    saves:
+      <output_dir>/images/<frame>.png  -- source RGB image
+      <output_dir>/labels/<frame>.png  -- RGB-encoded semantic label image
+
+    Tag mapping (CARLA raw tag → objectseg class ID) is loaded from
+    tag_config_path (carla_tag_to_objectseg.yaml by default).
+    Color mapping (class ID → RGB) is loaded from seg_config_path
+    (objectseg.yaml by default).  Any unmapped tag defaults to class 0
+    (background).
+    """
+
+    def __init__(self, parent_actor, hud, seg_config_path, tag_config_path,
+                 output_dir=os.path.join(
+                     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     'data', '_segmentation_dataset')):
+        self.parent = parent_actor
+        self.output_dir = output_dir
+        self.recording = False
+        self.frame_count = 0
+        self._last_save_time = 0.0
+        self.IMG_W = hud.dim[0]
+        self.IMG_H = hud.dim[1]
+
+        self._rgb_array = None
+        self._rgb_frame = -1
+        self._seg_array = None   # uint8 (H, W) — class ID per pixel
+        self._seg_frame = -1
+
+        # Load tag mapping from YAML: raw CARLA tag -> objectseg class ID
+        self._tag_lut = SegmentationDatasetRecorder._load_tag_lut(tag_config_path)
+        # Load color map from YAML: class_id -> BGR
+        self._color_lut = SegmentationDatasetRecorder._load_color_lut(seg_config_path)
+
+        world = parent_actor.get_world()
+        bp_lib = world.get_blueprint_library()
+
+        bound_x = 0.5 + parent_actor.bounding_box.extent.x
+        bound_z = 0.5 + parent_actor.bounding_box.extent.z
+        sensor_transform = carla.Transform(
+            carla.Location(x=+0.8 * bound_x, y=0.0, z=1.3 * bound_z),
+            carla.Rotation(pitch=0.0)
+        )
+
+        self.camera = None
+        self.seg_camera = None
+
+        # RGB camera
+        cam_bp = bp_lib.find('sensor.camera.rgb')
+        cam_bp.set_attribute('image_size_x', str(self.IMG_W))
+        cam_bp.set_attribute('image_size_y', str(self.IMG_H))
+        try:
+            self.camera = world.spawn_actor(cam_bp, sensor_transform, attach_to=parent_actor)
+        except Exception as e:
+            print(f'SegmentationDatasetRecorder: failed to spawn RGB camera: {e}')
+
+        # Semantic segmentation camera (raw — red channel = semantic tag ID)
+        seg_bp = bp_lib.find('sensor.camera.semantic_segmentation')
+        seg_bp.set_attribute('image_size_x', str(self.IMG_W))
+        seg_bp.set_attribute('image_size_y', str(self.IMG_H))
+        try:
+            self.seg_camera = world.spawn_actor(seg_bp, sensor_transform, attach_to=parent_actor)
+        except Exception as e:
+            print(f'SegmentationDatasetRecorder: failed to spawn seg camera: {e}')
+
+        weak_self = weakref.ref(self)
+        if self.camera is not None:
+            self.camera.listen(lambda img: SegmentationDatasetRecorder._on_rgb(weak_self, img))
+        if self.seg_camera is not None:
+            self.seg_camera.listen(lambda img: SegmentationDatasetRecorder._on_seg(weak_self, img))
+
+    @staticmethod
+    def _load_color_lut(config_path):
+        """Load YAML color map and return a (256, 3) uint8 LUT (class_id -> BGR)."""
+        lut = np.zeros((256, 3), dtype=np.uint8)
+        try:
+            with open(config_path, 'r') as f:
+                cfg = yaml.safe_load(f)
+            mapping = cfg.get('id_to_color_mapping', {})
+            for class_id, rgb in mapping.items():
+                if 0 <= class_id < 256:
+                    # Config stores RGB; OpenCV uses BGR
+                    lut[class_id] = [rgb[2], rgb[1], rgb[0]]
+        except Exception as e:
+            print(f'SegmentationDatasetRecorder: failed to load color map "{config_path}": {e}')
+        return lut
+
+    @staticmethod
+    def _load_tag_lut(config_path):
+        """Load YAML tag mapping and return a 256-entry uint8 LUT (CARLA tag -> class ID)."""
+        lut = np.zeros(256, dtype=np.uint8)
+        try:
+            with open(config_path, 'r') as f:
+                cfg = yaml.safe_load(f)
+            mapping = cfg.get('carla_tag_to_class', {})
+            for tag, class_id in mapping.items():
+                if 0 <= tag < 256:
+                    lut[tag] = int(class_id)
+        except Exception as e:
+            print(f'SegmentationDatasetRecorder: failed to load tag map "{config_path}": {e}')
+        return lut
+
+    def _next_frame_index(self):
+        max_idx = -1
+        img_dir = os.path.join(self.output_dir, 'images')
+        if os.path.isdir(img_dir):
+            for fname in os.listdir(img_dir):
+                stem, _ = os.path.splitext(fname)
+                try:
+                    idx = int(stem)
+                    if idx > max_idx:
+                        max_idx = idx
+                except ValueError:
+                    pass
+        return max_idx + 1
+
+    def toggle(self, hud=None):
+        self.recording = not self.recording
+        if self.recording:
+            os.makedirs(os.path.join(self.output_dir, 'images'), exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir, 'labels'), exist_ok=True)
+            self.frame_count = self._next_frame_index()
+            self._last_save_time = 0.0
+            msg = 'Segmentation Dataset Recording ON -> %s (next frame: %06d)' % (
+                self.output_dir, self.frame_count)
+        else:
+            msg = 'Segmentation Dataset Recording OFF (%d frames saved)' % self.frame_count
+        print(msg)
+        if hud:
+            hud.notification(msg)
+
+    @staticmethod
+    def _on_rgb(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        arr = np.frombuffer(image.raw_data, dtype=np.uint8)
+        self._rgb_array = arr.reshape((image.height, image.width, 4))[:, :, :3]  # BGRA -> BGR
+        self._rgb_frame = image.frame
+
+    @staticmethod
+    def _on_seg(weak_self, image):
+        self = weak_self()
+        if not self:
+            return
+        # Raw semantic segmentation: BGRA where red channel = semantic tag ID
+        arr = np.frombuffer(image.raw_data, dtype=np.uint8).reshape((image.height, image.width, 4))
+        tag_ids = arr[:, :, 2]                          # red channel: CARLA tag ID
+        self._seg_array = self._tag_lut[tag_ids]        # map tag -> class ID
+        self._seg_frame = image.frame
+        if (self.recording
+                and self._rgb_array is not None
+                and abs(self._rgb_frame - self._seg_frame) <= 2):
+            self._save_pair()
+
+    def _save_pair(self):
+        now = time.time()
+        if now - self._last_save_time < 0.5:
+            return
+        self._last_save_time = now
+
+        stem = '%06d' % self.frame_count
+
+        # Source RGB image
+        cv2.imwrite(os.path.join(self.output_dir, 'images', stem + '.png'), self._rgb_array)
+
+        # Label image: map class IDs -> BGR colors via LUT
+        label_bgr = self._color_lut[self._seg_array]   # (H, W, 3) BGR
+        cv2.imwrite(os.path.join(self.output_dir, 'labels', stem + '.png'), label_bgr)
+
+        self.frame_count += 1
+
+    def destroy(self):
+        self.recording = False
+        for sensor in (self.camera, self.seg_camera):
+            if sensor is not None:
+                sensor.stop()
+        time.sleep(0.1)
+        for sensor in (self.camera, self.seg_camera):
+            if sensor is not None:
+                try:
+                    sensor.destroy()
+                except Exception:
+                    pass
+        self.camera = None
+        self.seg_camera = None
+
+
+# ==============================================================================
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
 
@@ -2192,7 +2544,7 @@ def game_loop(args):
         pygame.display.flip()
 
         hud = HUD(args.width, args.height)
-        world = World(sim_world, hud, traffic_manager, args)
+        world = World(sim_world, hud, traffic_manager, args, client)
         controller = KeyboardControl(world, args.autopilot)
 
         if args.sync:
@@ -2281,6 +2633,20 @@ def main():
     argparser.add_argument(
         '--num_trucks', type=int, default=0, metavar='N',
         help='Number of additional mining trucks to spawn at random map locations with autopilot (default: 0)')
+    argparser.add_argument(
+        '--num_pedestrian', type=int, default=0, metavar='N',
+        help='Number of pedestrians to spawn with AI controllers (default: 0)')
+    argparser.add_argument(
+        '--seg_config', metavar='PATH',
+        default=os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+            'Models', 'data_parsing', 'config', 'color_map', 'objectseg.yaml'),
+        help='Path to segmentation color map YAML config (default: Models/data_parsing/config/color_map/objectseg.yaml)')
+    argparser.add_argument(
+        '--tag_config', metavar='PATH',
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             'config', 'carla_tag_to_objectseg.yaml'),
+        help='Path to CARLA tag→class mapping YAML (default: scripts/config/carla_tag_to_objectseg.yaml)')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
