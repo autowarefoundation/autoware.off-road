@@ -1,0 +1,24 @@
+# Mapping of raw CARLA semantic segmentation tag IDs to objectseg class IDs.
+#
+# Tag IDs are empirically determined from the mine map's semantic segmentation
+# output (red channel of BGRA raw_data). This map does NOT follow the standard
+# CARLA 0.9.x tag table — tags are custom to the mine asset pack.
+#
+#
+# objectseg class IDs (defined in Models/data_parsing/config/color_map/objectseg.yaml):
+#   0: background
+#   1: man-made_structures
+#   2: vulnerable_living
+#   3: vehicle
+#   4: natural_obstacles
+#
+# Any tag not listed here defaults to background (class 0).
+
+dst_image_dir: "CARLA/data/ObjectSeg/CARLA_Mining/CARLA_Mining/images"
+dst_gt_mask_dir: "CARLA/data/ObjectSeg/CARLA_Mining/CARLA_Mining/gt_masks"
+
+carla_tag_to_class:
+  0:  0   # sky / road / background terrain  -> background
+  11: 0   # rocky terrain mounds             -> background
+  14: 3   # mining truck (vehicle)           -> vehicle
+  25: 0   # mountain                         -> background

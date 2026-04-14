@@ -1,0 +1,633 @@
+================================================================================
+                     AUTOWARE OFF-ROAD WORKING GROUP
+                          Annual Report: April 2025 – March 2026
+================================================================================
+
+
+INTRODUCTION
+============
+
+The Autoware Off-Road Working Group represents a strategic expansion of the
+Autoware Foundation's mission. While Autoware is traditionally known for its
+urban self-driving capabilities, vast parts of the world lack well-defined roads
+or lane markings. These unstructured environments still offer significant value
+and operational opportunities when integrated with an advanced autonomous driving
+system.
+
+Our work in the Off-Road WG addresses the unique challenges of unstructured
+environments and extends coverage beyond what the traditional Autoware stack
+provides. Some of the high-value off-road use cases include agriculture, mining,
+racing, and space exploration. It transforms Autoware into a universal autonomy
+system capable of operating in almost anywhere across a diverse range of terrains.
+
+To tackle off-road challenges, one must engineer hardware and software systems
+capable of localizing, perceiving, and navigating in the unstructured
+environments with uneven terrain, and create high-fidelity simulations that
+minimize the sim-to-real gap for training, validation, and deployment.
+
+This report summarizes the work completed by the Off-Road Working Group in the
+past year (April 2025 – March 2026), where significant progress was made in
+developing off-road AV stacks, simulations, and reference vehicles. The group
+focused on two primary use cases: mining and racing.
+
+
+================================================================================
+MINING USE CASE
+================================================================================
+
+This initiative focuses on the development of advanced autonomy stacks
+specifically designed for heavy-duty mining trucks operating in rugged,
+unstructured environments. The primary objective is to build a core
+End-to-End (E2E) / hybrid autonomy architecture by repurposing and fine-tuning
+models from the Autoware AutoSeg foundation model — a vision-based pilot system
+initially designed for urban environments. Because mining landscapes differ
+fundamentally from urban driving environments, additional models and changes were
+integrated to accommodate unique off-road requirements.
+
+The system operates without reliance on GNSS, lane markings, or high-definition
+maps. Instead, it uses vision-based perception, reactive planning, and closed-
+loop control to navigate dynamically changing terrain in real time.
+
+The work on the mining use case is divided into the following components:
+
+
+--------------------------------------------------------------------------------
+1. CARLA-BASED MINING SIMULATION ENVIRONMENT
+--------------------------------------------------------------------------------
+
+A purpose-built simulation environment was developed using the CARLA simulator
+with a dedicated mining map (Mine_01). The simulation serves two roles: (1) as a
+data collection platform for generating synthetic training datasets, and (2) as
+a development and test environment for the full autonomy stack.
+
+The simulator is launched via Simulation/CARLA/scripts/mining_sim.py and
+provides the following capabilities:
+
+  Vehicle Setup
+  - Ego vehicle: heavy-duty mining truck
+  - Optional lead truck: spawned 15 m ahead to simulate convoy following
+  - Optional NPC trucks: configurable number of additional vehicles
+
+  Sensor Suite
+  - RGB camera (display): live viewer with optional recording
+  - RGB camera (dataset): co-mounted with LiDAR for paired data collection
+  - Depth camera: same mount and field of view for depth-based elevation maps
+  - LiDAR ray-cast (50 m range): used to generate ground-truth elevation maps
+  - Collision sensor, lane invasion sensor, GNSS, IMU, radar (optional)
+
+  Interactive Controls
+  - Manual driving via keyboard (WASD / arrow keys)
+  - CARLA autopilot toggle (P key)
+  - Ackermann controller via ROS 2 bridge (F key)
+  - Constant-velocity cruise at 60 km/h (Ctrl+W)
+  - Camera position cycling, weather preset cycling, HUD toggle
+
+  ROS 2 Integration
+  - Publishes vehicle speed to: /carla/ego_vehicle/speed (std_msgs/Float32)
+  - Subscribes to steering commands: /carla/ego_vehicle/ackermann_cmd
+    (ackermann_msgs/AckermannDrive)
+  - Uses rmw_fastrtps_cpp middleware for compatibility with Isaac Sim
+
+  Elevation Dataset Recording (E key)
+  The simulator automatically saves paired RGB and LiDAR ground-truth elevation
+  maps at 2 Hz. Output structure:
+
+      data/_elevation_dataset/
+      ├── images/                  -- 640x320 BGR PNG frames
+      ├── gt_lidar_elevations/     -- 640x320 uint8 PNG (LiDAR-derived bins)
+      ├── gt_depth_elevations/     -- 640x320 uint8 PNG (depth camera-derived)
+      ├── gt_bev_lidar_elevations/ -- 600x600 bird's-eye-view LiDAR elevation
+      ├── gt_bev_depth_elevations/ -- 600x600 bird's-eye-view depth elevation
+      └── camera_params/
+          └── camera_params.npy    -- float32 (12,) flattened [R|t] matrix
+
+  Elevation encoding:
+  - Pixel value 0: no data (NaN or out of range)
+  - Pixel values 96-255: valid bin index, linearly encoded
+  - Formula: bin = round((p - 96) * 39 / 159), where p is pixel value
+  - Elevation range: -0.5 m to +1.5 m across 40 bins (5 cm per bin)
+
+  BEV grid parameters:
+  - Forward range: 60 m, lateral range: +/- 30 m
+  - Resolution: 10 pixels/m, grid size: 600x600 px
+  - Origin: ego vehicle position at bottom edge of image
+
+
+--------------------------------------------------------------------------------
+2. DATA PARSING TOOLS
+--------------------------------------------------------------------------------
+
+Two complementary tools were developed to prepare training data from both
+third-party and custom-annotated sources.
+
+  2a. Interactive SAM-Assisted Annotation Tool (mask_labeling.py)
+  ---------------------------------------------------------------
+  An interactive annotation tool powered by Meta's Segment Anything Model (SAM)
+  enables rapid, high-quality labeling of off-road scenes.
+
+  SAM provides automatic region segmentation from user click prompts, reducing
+  the time required to annotate complex terrain scenes by an order of magnitude
+  compared to manual polygon labeling.
+
+  Supported SAM model sizes: ViT-H, ViT-L, ViT-B (auto-downloaded)
+  Hardware: CUDA GPU acceleration when available, CPU fallback
+
+  Interactive controls:
+    Short left-click (<0.25s)  -- SAM prompt: auto-segment clicked region
+    Hold left-click            -- Paint brush (adjustable radius)
+    Middle-click               -- Erase brush
+    Ctrl + left-click          -- Flood-fill region
+    Keys 0-9                   -- Select class ID
+    +/-                        -- Adjust brush radius
+    Z                          -- Undo last action
+    N / B                      -- Next / previous image
+    M                          -- Auto-label next unlabeled image
+    ESC                        -- Save and exit
+
+  Input: YAML color map file specifying class IDs and RGB colors, e.g.:
+    id_to_color_mapping:
+      0: [61, 93, 255]    # non-drivable (blue)
+      1: [0, 255, 220]    # drivable (cyan)
+
+  Output: one PNG mask per input image, color-coded per class
+
+  2b. Segmentation-Based Dataset Editing Tool (mask_editing.py)
+  -------------------------------------------------------------
+  A batch processing tool converts third-party off-road datasets into the
+  project's unified standard format. Configuration is managed via Hydra, making
+  it straightforward to add support for new datasets.
+
+  Workflow:
+    1. Load source dataset using glob patterns
+    2. Match image/mask pairs by filename stem
+    3. Remap source label IDs or colors to project class IDs
+    4. Resize and convert to standard PNG format
+    5. Save to standardized output directory
+
+  Output structure:
+    {dataset_dir}/AORAS/{Task}/{Dataset}/{Dataset}/
+    ├── images/         -- resized source images (PNG)
+    ├── gt_masks/       -- remapped color masks (PNG)
+    └── camera_params/  -- (elevation only) camera_params.npy, shape (12,)
+
+  Configuration example (Hydra YAML):
+    dataset: "Rellis_3D"
+    src_image_pattern: "Rellis_3D/.../**/*.jpg"
+    src_gt_mask_pattern: "Rellis_3D/.../**/*.png"
+    dst_image_dir: "AORAS/FreespaceSeg/Rellis_3D/.../images"
+    dst_gt_mask_dir: "AORAS/FreespaceSeg/Rellis_3D/.../gt_masks"
+    label_to_id_mapping:
+      0: 0   # void -> background
+      1: 1   # dirt -> drivable
+      3: 1   # grass -> drivable
+      4: 0   # tree -> non-drivable
+
+
+--------------------------------------------------------------------------------
+3. OPEN OFF-ROAD DATASETS
+--------------------------------------------------------------------------------
+
+The project supports training and evaluation on six publicly available off-road
+datasets, plus two custom datasets produced by the working group. All datasets
+are automatically converted to a unified format using the mask_editing.py tool
+and Hydra configuration files.
+
+  3a. Rellis-3D
+  -------------
+  A large-scale outdoor dataset captured across multiple terrain types including
+  mud, grass, concrete, and gravel. Contains RGB images, LiDAR point clouds, and
+  semantic segmentation labels. Rellis-3D forms the primary benchmark for
+  freespace and terrain segmentation tasks, with 20+ semantic classes remapped
+  to the project's binary drivable/non-drivable label scheme.
+
+  3b. GOOSE (German Off-road and Outdoor SEgmentation)
+  -----------------------------------------------------
+  A dataset focused on grassland and natural terrain environments in Germany.
+  Used for freespace and terrain segmentation. Offers challenging low-contrast
+  boundaries between drivable grass paths and surrounding vegetation.
+
+  3c. CASSED
+  ----------
+  A dataset captured in sandy and desert terrain environments. Used primarily
+  for freespace segmentation in environments lacking distinct visual boundaries
+  between navigable and non-navigable surfaces.
+
+  3d. OFFSED (Off-road Semantic Segmentation Dataset)
+  ----------------------------------------------------
+  A multi-terrain off-road dataset covering various outdoor environments. Used
+  for freespace, terrain, and object segmentation. Provides a broad coverage of
+  surface types and lighting conditions.
+
+  3e. Yamaha-CMU Off-Road Dataset
+  --------------------------------
+  Collected by Carnegie Mellon University using a Yamaha Viking off-road vehicle.
+  Covers forested trails and outdoor terrain in natural Japanese and North
+  American settings. Used for freespace and terrain segmentation tasks.
+
+  3f. ORFD (Off-Road Freespace Detection Dataset)
+  ------------------------------------------------
+  A dataset focused specifically on freespace detection in off-road environments.
+  Provides binary freespace annotations without semantic class distinctions.
+
+  3g. Fortysix (Custom - Off-Road WG)
+  ------------------------------------
+  A dataset annotated by the off-road working group using the SAM-assisted
+  annotation tool. Contains manually curated off-road scenes with high-quality
+  segmentation masks.
+
+  3h. CARLA_mining (Custom - Off-Road WG)
+  ----------------------------------------
+  A synthetic dataset generated using the CARLA mining simulation environment.
+  Provides paired RGB images and LiDAR-derived ground-truth elevation maps,
+  collected across the Mine_01 map under varying weather and lighting conditions.
+  Used for training and evaluation of the ElevationNetwork.
+
+  Summary Table:
+
+    Dataset        | Freespace | Terrain | Object | Notes
+    ---------------|-----------|---------|--------|----------------------------
+    Rellis-3D      | Yes       | Yes     | Yes    | Multi-terrain
+    GOOSE          | Yes       | Yes     | Yes    | Grassland focus
+    CASSED         | Yes       | --      | --     | Sandy/desert terrain
+    OFFSED         | Yes       | Yes     | Yes    | Multi-terrain
+    Yamaha-CMU     | Yes       | Yes     | --     | Forested trails
+    ORFD           | Yes       | --      | --     | Freespace only
+    Fortysix       | Yes       | --      | --     | WG custom annotations
+    CARLA_mining   | --        | --      | --     | Synthetic elevation data
+
+
+--------------------------------------------------------------------------------
+4. OFF-ROAD FOUNDATION MODEL: PERCEPTION PIPELINE
+--------------------------------------------------------------------------------
+
+The perception system consists of four specialized deep learning networks, all
+built on a shared backbone architecture for computational efficiency. The shared
+backbone runs once per frame, and task-specific heads branch from its output.
+
+  Shared Backbone Architecture
+  ----------------------------
+  All segmentation models use the following shared structure:
+
+    Input: 640x320 RGB image
+    -> EfficientNet-B0 (ImageNet pretrained): multi-scale feature extraction
+       Output feature maps at strides 4, 8, 16, 32 (l0, l2, l3, l4, l8)
+    -> SceneContext module: attention mechanism on deepest features (l8, 1280ch)
+       - Global pooling -> MLP (1280->800->200) -> sigmoid
+       - Reshape -> Conv upsampling -> element-wise attention on l8
+    -> SceneNeck (FPN decoder): 3-stage upsampling with skip connections
+       Output: (B, 256, H/4, W/4) at stride-4
+
+  Normalization: ImageNet statistics (mean=[0.485, 0.456, 0.406],
+                                       std=[0.229, 0.224, 0.225])
+
+  4a. ObjectSegNetwork
+  --------------------
+  Purpose: Semantic segmentation of off-road scene objects and terrain classes.
+  Provides per-pixel class labels for obstacles, vegetation, sky, and other
+  scene elements.
+
+  Architecture:
+    Shared backbone -> ObjectSegHead
+    ObjectSegHead: Conv(256->128->N_classes) with softmax output
+
+  Output: (H, W) array of class indices at stride-4 resolution
+  Use: Scene understanding, obstacle classification
+
+  4b. FreespaceContourNetwork
+  ---------------------------
+  Purpose: Predict the radial boundary of the drivable area as a compact
+  contour representation, enabling efficient corridor tracking and gap-following.
+
+  Architecture:
+    Shared backbone -> FreespaceContourHead
+    FreespaceContourHead: Conv(256->128->37) -> 37 radial bin indices
+
+  Output representation:
+  - 37 rays sweeping from left (pi radians) to right (0 radians) relative
+    to the vehicle forward direction
+  - Each output value is a bin index; distance = bin_index * 10 pixels
+  - Contour points are reconstructed from angles and distances
+
+  The RadialContourDists utility scans from the bottom-center of the image
+  at 37 angles, detects drivable/non-drivable boundary transitions, and
+  returns the corresponding bin indices for supervised training.
+
+  Training:
+  - Loss: Mean Squared Error on radial bin indices
+  - Metrics: contour accuracy, Mean Absolute Error
+
+  Inference:
+    from inference.freespace_contour_infer import FreespaceContourNetworkInfer
+    model = FreespaceContourNetworkInfer(checkpoint_path='model.pth')
+    contour = model.inference(image)  # numpy (37,) bin indices
+
+  4c. ElevationNetwork
+  --------------------
+  Purpose: Predict per-pixel terrain elevation (height) from a single RGB
+  image fused with camera extrinsic parameters. Enables terrain-aware planning
+  and control without requiring a depth sensor at inference time.
+
+  Architecture:
+    Shared backbone (stride-8 output) -> Camera MLP fusion -> ElevationHead
+
+    Camera MLP:
+    - Input: camera parameters (B, 12) -- flattened 3x4 [R|t] projection matrix
+    - MLP: (12->64->256) with ReLU
+    - Output broadcast and fused (element-wise add) with stride-8 features
+
+    ElevationHead:
+    - Conv(256->128->40) with softmax over 40 elevation bins
+    - Expected elevation: E[h] = sum(bin_centre * softmax_prob)
+
+  Elevation bin specification:
+  - 40 bins spanning -0.5 m to +1.5 m
+  - Resolution: 5 cm per bin
+  - Bin centres: [-0.475, -0.425, ..., +1.475] metres
+
+  Camera parameters format:
+  - Flattened 3x4 projection matrix: P = K @ [R|t]
+  - Rotation from LiDAR frame (x=fwd, y=left, z=up) to camera frame:
+      R = [[0, -1,  0],
+           [0,  0, -1],
+           [1,  0,  0]]
+  - Translation: [0, 0, 0] (co-mounted camera and LiDAR)
+
+  Training:
+  - Loss: Cross-entropy on 40 elevation bins (classification formulation)
+  - Metric: Mean Absolute Error in metres
+  - Input: 640x320 RGB + camera_params.npy
+
+  Inference:
+    from inference.elevation_infer import ElevationNetworkInfer
+    model = ElevationNetworkInfer(checkpoint_path='model.pth')
+    elevation_map = model.inference(image, camera_params)
+    # Returns numpy (H/8, W/8) expected elevation in metres
+
+  4d. AutoSpeedNetwork
+  --------------------
+  Purpose: Detect speed-limit signs and critical objects (CIPO classes) to
+  inform adaptive speed planning. Supports both PyTorch and ONNX backends.
+
+  Architecture: YOLOv8-style object detector with scalable model sizes
+
+    YOLO Backbone (CSPDarknet variant)
+    -> AutoSpeedNeck (FPN multi-scale feature fusion)
+    -> AutoSpeedHead (3-scale detection pyramid)
+       - Bounding boxes, class scores, object confidence
+       - NMS post-processing: IoU threshold=0.45, confidence threshold=0.6
+
+  Model sizes (width channels, depth multipliers):
+    nano (n):   width=[3,16,32,64,128,256],    depth=[1,1,1,1,1,1]
+    small (s):  width=[3,32,64,128,256,512],   depth=[1,1,1,1,1,1]
+    medium (m): width=[3,64,128,256,512,512],  depth=[1,1,1,1,1,1], CSP=True
+    large (l):  width=[3,64,128,256,512,512],  depth=[2,2,2,2,2,2], CSP=True
+    xlarge (x): width=[3,96,192,384,768,768],  depth=[2,2,2,2,2,2], CSP=True
+
+  Input: 640x640 (letterboxed with mosaic augmentation during training)
+  Output: list of [x1, y1, x2, y2, confidence_score, class_id]
+  Classes: 3 speed sign / object classes (CIPO-1, CIPO-2, CIPO-3)
+
+  Training:
+  - Loss: YOLOv8-style (box regression + classification + DFL)
+  - Metrics: mAP@0.5, mAP@0.5:0.95, Precision, Recall
+  - Multi-GPU support via torchrun / DistributedDataParallel (DDP)
+
+  Inference (PyTorch):
+    from inference.auto_speed_infer import AutoSpeedNetworkInfer
+    model = AutoSpeedNetworkInfer(checkpoint_path='best.pt')
+    detections = model.inference(image)
+
+  Inference (ONNX - accelerated):
+    from inference.auto_speed_infer import AutoSpeedONNXInfer
+    model = AutoSpeedONNXInfer(checkpoint_path='model.onnx')
+    detections = model.inference(image)
+
+  Training Pipeline
+  -----------------
+  All networks share a common training framework with the following features:
+
+  Data loading:
+  - LoadDataFreespaceSeg: 90/10 train/val split, class-weighted cross-entropy
+  - LoadDataElevation: shared camera_params broadcast to all samples
+  - Consistent split: every 10th sample held out for validation
+
+  Augmentation pipeline (augmentations.py):
+  - Random resizing (aspect-ratio preserving)
+  - HSV jitter (hue, saturation, value)
+  - Geometric transforms (rotation, translation, scaling, shear)
+  - Horizontal flip
+  - Mosaic mixing (YOLOv8-style, for AutoSpeedNetwork)
+  - ImageNet normalization
+
+  Logging and checkpointing:
+  - TensorBoard logging to runs/ directory
+  - Checkpoint saved every 8000 training steps
+  - Validation metrics computed every 8000 steps
+  - Sample predictions saved to training/ folder every 1000 steps
+  - Loss logged every 250 steps
+
+  Batch schedule (segmentation networks):
+    Epochs 0-9:   batch size 16
+    Epochs 10-29: batch size 8
+    Epochs 30-59: batch size 4
+    Epochs 60-79: batch size 2
+    Epochs 80+:   batch size 1
+
+  Visualization tools (Models/visualization/):
+    FreespaceSeg:     overlay (non-drivable=blue, drivable=cyan)
+    FreespaceContour: 37 red circles + connecting boundary lines
+    Elevation:        side-by-side image + jet-colormap elevation overlay
+    AutoSpeed:        colored bounding boxes per class
+
+
+--------------------------------------------------------------------------------
+5. OFF-ROAD FOUNDATION MODEL: PLANNING AND CONTROL PIPELINE
+--------------------------------------------------------------------------------
+
+  5a. AutoSpeedNetwork (Speed Adaptation)
+  ----------------------------------------
+  AutoSpeedNetwork detections feed directly into the longitudinal speed
+  controller. When a CIPO-class object or speed limit sign is detected at close
+  range, the target speed is reduced accordingly. This closes the loop between
+  perception and longitudinal control without a separate planning layer.
+
+  5b. Off-Road Planning and Control Modules
+  -----------------------------------------
+
+  GapFollower (Modules/GapFollower/)
+  -----------------------------------
+  A reactive obstacle avoidance module that implements the Follow-the-Gap
+  method adapted for off-road environments. It operates on a bird's-eye-view
+  (BEV) contour image produced by the FreespaceContourNetwork, providing a
+  purely vision-based reactive planning loop.
+
+  Language: C++ with C-compatible interface for Python bindings via ctypes
+
+  Algorithm:
+    1. Simulated laser scan: ray-cast from ego position across 360 degrees
+       at 1-degree increments up to 30 m range, detecting drivable/non-
+       drivable boundary transitions in the BEV image
+    2. Gap identification: cluster contiguous angular ranges below the
+       range threshold into candidate gaps
+    3. Gap filtering: remove gaps narrower than the minimum gap size
+       (5 m geometric width check)
+    4. Occlusion removal: for overlapping gaps, retain only the closest
+    5. Best gap selection: choose the gap closest to the goal angle
+
+  Parameters:
+    bev_resolution:          0.05 m/px (20 px/m)
+    bev_ego_x/y:             image centre / bottom edge
+    raycast_angle_min/max:   -pi to +pi (full 360 degrees)
+    raycast_angle_increment: pi/180 (1 degree)
+    raycast_max_range:       30 m
+    min_gap_size:            5 m
+    range_thresh:            15 m
+    goal_angle:              0.0 rad (forward, configurable)
+
+  Public interface:
+    processBEVContour(bev_image)   -- run full gap-finding pipeline
+    getTargetGapIndices()          -- returns (gap_start_idx, gap_end_idx)
+    getAllGaps()                    -- returns all detected gaps
+    getLastScan()                  -- returns last simulated laser scan
+
+  Performance: sub-millisecond execution per BEV frame
+
+  Control (Modules/Control/)
+  ---------------------------
+  Two C++ controllers handle lateral and longitudinal vehicle control,
+  both exposing C-compatible interfaces for integration with the Python
+  ROS 2 node.
+
+  Steering Controller (Stanley + Curvature Feedforward)
+  - Combines cross-track error correction, yaw error feedback, and
+    path curvature feedforward for smooth lateral tracking
+
+  Control law:
+    steering = K_d * (yaw_error - prev_yaw_error)
+             + atan(K_i * cte / (forward_velocity + K_damp))
+             + K_p * yaw_error
+             - atan(curvature * wheelbase)
+
+  Parameters:
+    wheelbase: distance between front and rear axles (metres)
+    K_p:       yaw error proportional gain
+    K_i:       CTE/velocity ratio (Stanley gain)
+    K_d:       yaw error derivative gain
+
+  Inputs:  cross_track_error (m), yaw_error (rad), curvature (1/m),
+           forward_velocity (m/s)
+  Output:  steering_angle (radians)
+
+  PI Controller (Longitudinal Velocity)
+  - Closed-loop speed regulation via proportional-integral-derivative
+    feedback on velocity error
+
+  Control law:
+    integral_error += (target_speed - current_speed)
+    effort = K_p * error + K_i * integral_error + K_d * (error - prev_error)
+
+  Parameters:
+    K_p: proportional gain
+    K_i: integral gain
+    K_d: derivative gain
+
+  Inputs:  current_speed (m/s), target_speed (m/s)
+  Output:  control_effort (throttle/brake, normalized)
+
+  PathFinder (Modules/PathFinder/)
+  ---------------------------------
+  A path planning module that fuses EgoPath and EgoLane detections to track
+  cross-track error, yaw error, curvature, and corridor width in BEV space
+  using a Bayes filter for robust, noise-tolerant state estimation.
+
+  Language: C++ with CMake build
+
+  Processing pipeline:
+    1. Image-to-BEV projection: inverse perspective mapping (IPM) of camera
+       pixel coordinates to metric bird's-eye-view coordinates
+    2. Curve fitting: quadratic polynomial fit to projected lane/path points
+    3. Error metrics: CTE, yaw error, curvature, corridor width (raw)
+    4. Bayes filter: 10 individually tracked states + 3 fused states
+       (product of Gaussians) -- prediction and update each frame
+    5. Output: 13 tracked error metrics in metric BEV frame
+
+  Outputs include per-lane and fused estimates for:
+    - Path centre-line CTE
+    - Left and right lane CTEs
+    - Yaw error
+    - Path curvature
+    - Corridor width
+
+
+--------------------------------------------------------------------------------
+6. END-TO-END DEMO: CARLA MINING PIPELINE
+--------------------------------------------------------------------------------
+
+The CARLA_mining demo (Demos/CARLA_mining/CARLA_mining_demo.py) integrates all
+components into a closed-loop autonomy stack running inside the CARLA simulator.
+
+Pipeline:
+  1. CARLA simulator publishes camera images via ROS 2
+  2. Perception node runs FreespaceContourNetwork and AutoSpeedNetwork
+  3. FreespaceContourNetwork output -> BEV contour image -> GapFollower
+  4. GapFollower outputs best gap indices -> lateral steering target
+  5. AutoSpeedNetwork detections -> target speed
+  6. Stanley controller computes steering angle from CTE + yaw error
+  7. PI controller computes throttle/brake from speed error
+  8. AckermannDrive command published to /carla/ego_vehicle/ackermann_cmd
+
+Implementation:
+  - ThreadPoolExecutor for parallel perception inference
+  - ROS 2 executor for asynchronous topic subscription/publication
+  - Target frame rate: ~10 Hz (limited by CARLA synchronous mode)
+
+
+================================================================================
+SYSTEM SUMMARY
+================================================================================
+
+Component                | Language       | Purpose                    | I/O
+-------------------------|----------------|----------------------------|----------------------------
+FreespaceSegNetwork      | Python/PyTorch | Drivable area segmentation | 640x320 RGB -> (H,W) mask
+FreespaceContourNetwork  | Python/PyTorch | Drivable boundary contour  | 640x320 RGB -> (37,) bins
+ElevationNetwork         | Python/PyTorch | Terrain height estimation  | 640x320 RGB+(12,) -> hmap
+AutoSpeedNetwork         | Python/PyTorch | Object/speed detection     | 640x640 RGB -> detections
+GapFollower              | C++            | Reactive gap navigation    | BEV image -> gap indices
+PathFinder               | C++            | Path tracking + Bayes est. | Lane detections -> 13 metrics
+SteeringController       | C++            | Lateral Stanley control    | CTE/yaw/curv -> steer angle
+PI_Controller            | C++            | Longitudinal speed control | speed error -> throttle
+mask_labeling.py         | Python (SAM)   | Interactive annotation     | Image dir -> PNG masks
+mask_editing.py          | Python (Hydra) | Batch dataset conversion   | Third-party data -> standard
+mining_sim.py            | Python (CARLA) | Simulation + data collect  | -- -> RGB+elevation @ 2 Hz
+CARLA_mining_demo.py     | Python (ROS2)  | End-to-end closed loop     | CARLA -> AckermannDrive
+
+
+================================================================================
+DEPENDENCIES
+================================================================================
+
+Python:
+  - PyTorch, torchvision (training, inference, EfficientNet backbone)
+  - OpenCV (image I/O, BEV projection, visualization)
+  - Segment Anything / SAM (annotation tool)
+  - Hydra (configuration management for dataset tools)
+  - PIL, numpy, scipy, tensorboard
+
+C++:
+  - C++17 compiler, CMake 3.22+
+  - Eigen3 (linear algebra for PathFinder)
+  - OpenCV (image processing for GapFollower and PathFinder)
+
+Simulation:
+  - CARLA 0.9.x with Mine_01 map asset
+  - ROS 2 Humble with ackermann_msgs, sensor_msgs, std_msgs
+
+Optional:
+  - ONNX Runtime (accelerated AutoSpeed inference)
+  - TensorBoard (training visualization)
+  - torchrun / DistributedDataParallel (multi-GPU AutoSpeed training)
+
+
+================================================================================
+                              END OF REPORT
+================================================================================
