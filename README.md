@@ -99,6 +99,7 @@ CARLA-based simulation environment using a mining truck (`vehicle.miningtruck.mi
 - **Manual control** — WASD / arrow keys, autopilot toggle (`P`), Ackermann control (`F`)
 - **ROS 2 bridge** — subscribes to `/carla/ego_vehicle/ackermann_cmd`, publishes `/carla/ego_vehicle/speed`
 - **Elevation dataset recording** — press `E` to toggle; saves paired RGB + LiDAR ground-truth elevation maps to `Simulation/CARLA/data/_elevation_dataset/`
+- **Semantic segmentation dataset recording** — press `J` to toggle; saves paired RGB images and CARLA semantic segmentation ground-truth masks to the destination directory defined in `carla_objectseg.yaml`
 
 ### Elevation Dataset Recording
 
@@ -114,27 +115,46 @@ Simulation/CARLA/data/_elevation_dataset/
 
 ---
 
-## Modules
+## Demos
 
-ROS 2 nodes for planning and control.
+### CARLA Mining Demo
 
-| Module | Description |
-|---|---|
-| `Modules/PathFinder/` | Path planning — see [PathFinder/README.md](Modules/PathFinder/README.md) |
-| `Modules/GapFollower/` | Gap-following reactive navigation |
-| `Modules/Control/` | Longitudinal and steering controllers |
+Closed-loop autonomy stack running inside CARLA on the `Mine_01` map. Subscribes to the ego vehicle's camera, runs perception inference, and publishes `AckermannDrive` commands at ~10 Hz.
+
+#### Prerequisites
+
+1. Install CARLA-0.10.0
+2. Build the C++ modules:
+    ```bash
+    cd Modules/GapFollower && mkdir -p build && cd build && cmake .. && make
+    cd Modules/Control/Steering/SteeringController && mkdir -p build && cd build && cmake .. && make
+    cd Modules/Control/Longitudinal/PIController && mkdir -p build && cd build && cmake .. && make
+    ```
+
+#### Launch
+
+**Terminal 1 — CARLA Core:**
+```bash
+./Carla-0.10.0-Linux-Shipping/CarlaUnreal.sh --ros2
+```
+
+**Terminal 2 — CARLA Mining Sim**
+```bash
+source /opt/ros/humble/setup.bash
+python Simulation/CARLA/scripts/mining_sim.py --num_truck 5
+```
+
+**Terminal 3 — Autonomy demo:**
+```bash
+source /opt/ros/humble/setup.bash
+cd Demos/CARLA_mining
+python CARLA_mining_demo.py \
+  --contour_model    /path/to/contour.pth \
+  --object_seg_model /path/to/objectseg.pth 
+
+```
+
+Press **ESC** in the display window to exit. See [Demos/CARLA_mining/README.md](Demos/CARLA_mining/README.md) for full pipeline and display layout details.
 
 ---
 
-## Perception Challenges
-
-- **No road structure** — off-road environments lack lane markings or curbs; the perception system relies on surface geometry, material, and texture
-- **Visual ambiguity** — dense forests and rocky terrain can make obstacles and drivable surfaces appear similar
-- **Terrain dynamics** — varying surface geometry and traction require adaptive, terrain-aware control
-
----
-
-## Planning / Control
-
-- Gap follower and path finder modules provide reactive and planned navigation
-- Terrain-aware control via end-to-end perception–planning integration is under active development
