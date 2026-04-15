@@ -555,23 +555,22 @@ class CARLAMiningDemoNode(Node):
                         color = (0, 255, 0) if is_target else (0, 180, 0)
                         thick = 2 if is_target else 1
 
-                        if False:  # gap drawings temporarily hidden
-                            # Draw on BEV view — py is in full-BEV space; subtract H_td_crop for canvas
-                            py1_c = py1 - H_td_crop
-                            py2_c = py2 - H_td_crop
-                            cv2.line(topdown_clean, (px1, py1_c), (px2, py2_c), color, thick)
+                        # Draw on BEV view — py is in full-BEV space; subtract H_td_crop for canvas
+                        py1_c = py1 - H_td_crop
+                        py2_c = py2 - H_td_crop
+                        cv2.line(topdown_clean, (px1, py1_c), (px2, py2_c), color, thick)
 
-                            # Draw on front view by projecting full-BEV coords via M_td2img
-                            p1_td = np.array([px1, py1, 1.0])
-                            p1_img = M_td2img @ p1_td
-                            c_f1, r_f1 = int(p1_img[0]/p1_img[2]), int(p1_img[1]/p1_img[2])
+                        # Draw on front view by projecting full-BEV coords via M_td2img
+                        p1_td = np.array([px1, py1, 1.0])
+                        p1_img = M_td2img @ p1_td
+                        c_f1, r_f1 = int(p1_img[0]/p1_img[2]), int(p1_img[1]/p1_img[2])
 
-                            p2_td = np.array([px2, py2, 1.0])
-                            p2_img = M_td2img @ p2_td
-                            c_f2, r_f2 = int(p2_img[0]/p2_img[2]), int(p2_img[1]/p2_img[2])
+                        p2_td = np.array([px2, py2, 1.0])
+                        p2_img = M_td2img @ p2_td
+                        c_f2, r_f2 = int(p2_img[0]/p2_img[2]), int(p2_img[1]/p2_img[2])
 
-                            if 0 <= r_f1 < 360 and 0 <= c_f1 < 640 and 0 <= r_f2 < 360 and 0 <= c_f2 < 640:
-                                cv2.line(frame_bgr_360_view, (c_f1, r_f1), (c_f2, r_f2), color, thick)
+                        if 0 <= r_f1 < 360 and 0 <= c_f1 < 640 and 0 <= r_f2 < 360 and 0 <= c_f2 < 640:
+                            cv2.line(frame_bgr_360_view, (c_f1, r_f1), (c_f2, r_f2), color, thick)
 
                         if is_target:
                             t_traj_start = time.time()
