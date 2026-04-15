@@ -51,10 +51,11 @@ class ObjectSegNetworkInfer():
         image_tensor = image_tensor.to(self.device)
 
         # Run model
-        prediction = self.model(image_tensor)
+        with torch.no_grad():
+            prediction = self.model(image_tensor)
 
         # Get output, find max class probability and convert to numpy array
-        prediction = prediction.squeeze(0).cpu().detach()
+        prediction = prediction.squeeze(0).cpu()
         prediction = prediction.permute(1, 2, 0)
         _, output = torch.max(prediction, dim=2)
         output = output.numpy()

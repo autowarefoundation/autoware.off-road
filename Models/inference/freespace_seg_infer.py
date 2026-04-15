@@ -4,7 +4,7 @@ import torch
 from torchvision import transforms
 import sys
 sys.path.append('..')
-from model_components.freespace_network import FreespaceNetwork
+from model_components.freespace_networks import FreespaceNetwork
 from model_components.scene_seg_network import SceneSegNetwork
 
 

@@ -66,18 +66,40 @@ import os
 import re
 import sys
 import yaml
+import queue
+import threading
 
 # Remove Isaac Sim from LD_LIBRARY_PATH to avoid spdlog conflicts with ROS2 Humble
 if "LD_LIBRARY_PATH" in os.environ:
     os.environ["LD_LIBRARY_PATH"] = re.sub(r'/?home/autoware/isaacsim6/[^:]*:?', '', os.environ["LD_LIBRARY_PATH"])
-# Use FastRTPS to prevent CycloneDDS dlopen errors
-os.environ["RMW_IMPLEMENTATION"] = "rmw_fastrtps_cpp"
+os.environ["RMW_IMPLEMENTATION"] = "rmw_cyclonedds_cpp"
+os.environ.setdefault("ROS_DOMAIN_ID", "42")
 
 import rclpy
 from ackermann_msgs.msg import AckermannDrive
 from std_msgs.msg import Float32
+from sensor_msgs.msg import Image as RosImage
 
 g_latest_ackermann = None
+g_ros_image_pub = None
+g_ros_image_queue = queue.Queue(maxsize=1)  # drop old frames if publisher can't keep up
+
+def _ros_image_publisher_thread():
+    """Background thread: serialises and publishes BGR images without blocking CARLA callbacks."""
+    while True:
+        bgr = g_ros_image_queue.get()
+        if bgr is None:
+            break
+        if g_ros_image_pub is None:
+            continue
+        ros_img = RosImage()
+        ros_img.height = bgr.shape[0]
+        ros_img.width  = bgr.shape[1]
+        ros_img.encoding = 'bgr8'
+        ros_img.is_bigendian = False
+        ros_img.step = ros_img.width * 3
+        ros_img.data = bgr.tobytes()
+        g_ros_image_pub.publish(ros_img)
 
 def ackermann_callback(msg):
     global g_latest_ackermann
@@ -1677,11 +1699,17 @@ class CameraManager(object):
             image.convert(self.sensors[self.index][1])
             array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
             array = np.reshape(array, (image.height, image.width, 4))
-            array = array[:, :, :3]
-            array = array[:, :, ::-1]
-            array = np.ascontiguousarray(array)
+            bgr_array = np.ascontiguousarray(array[:, :, :3])   # BGRA -> BGR
+            array = bgr_array[:, :, ::-1]                        # BGR  -> RGB for pygame
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
             # self.draw_vehicle_3d_bbox(array)
+            try:
+                # Downscale to 640×360 before publishing (0.69 MB vs 6.2 MB).
+                # The demo consumes 640×360 anyway, so this avoids 9× extra DDS traffic.
+                bgr_360 = cv2.resize(bgr_array, (640, 360), interpolation=cv2.INTER_LINEAR)
+                g_ros_image_queue.put_nowait(bgr_360)
+            except queue.Full:
+                pass  # drop frame — publisher thread hasn't caught up
             
         if self.recording:
             image.save_to_disk(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', '_rgb', '%08d' % image.frame))
@@ -2316,7 +2344,7 @@ class SegmentationDatasetRecorder:
       <output_dir>/labels/<frame>.png  -- RGB-encoded semantic label image
 
     Tag mapping (CARLA raw tag → objectseg class ID) is loaded from
-    tag_config_path (carla_tag_to_objectseg.yaml by default).
+    tag_config_path (carla_objectseg.yaml by default).
     Color mapping (class ID → RGB) is loaded from seg_config_path
     (objectseg.yaml by default).  Any unmapped tag defaults to class 0
     (background).
@@ -2331,8 +2359,8 @@ class SegmentationDatasetRecorder:
         self.recording = False
         self.frame_count = 0
         self._last_save_time = 0.0
-        self.IMG_W = hud.dim[0]
-        self.IMG_H = hud.dim[1]
+        self.IMG_W = 1280
+        self.IMG_H = 720
 
         self._rgb_array = None
         self._rgb_frame = -1
@@ -2343,6 +2371,19 @@ class SegmentationDatasetRecorder:
         self._tag_lut = SegmentationDatasetRecorder._load_tag_lut(tag_config_path)
         # Load color map from YAML: class_id -> BGR
         self._color_lut = SegmentationDatasetRecorder._load_color_lut(seg_config_path)
+
+        # Resolve dst dirs from tag config (paths relative to repo root)
+        repo_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        try:
+            with open(tag_config_path, 'r') as _f:
+                _cfg = yaml.safe_load(_f)
+            self.image_dir = os.path.join(repo_root, _cfg['dst_image_dir'])
+            self.gt_mask_dir = os.path.join(repo_root, _cfg['dst_gt_mask_dir'])
+        except Exception as e:
+            print(f'SegmentationDatasetRecorder: dst dirs not found in tag config, using defaults: {e}')
+            self.image_dir = os.path.join(output_dir, 'images')
+            self.gt_mask_dir = os.path.join(output_dir, 'gt_masks')
 
         world = parent_actor.get_world()
         bp_lib = world.get_blueprint_library()
@@ -2414,9 +2455,8 @@ class SegmentationDatasetRecorder:
 
     def _next_frame_index(self):
         max_idx = -1
-        img_dir = os.path.join(self.output_dir, 'images')
-        if os.path.isdir(img_dir):
-            for fname in os.listdir(img_dir):
+        if os.path.isdir(self.image_dir):
+            for fname in os.listdir(self.image_dir):
                 stem, _ = os.path.splitext(fname)
                 try:
                     idx = int(stem)
@@ -2429,12 +2469,12 @@ class SegmentationDatasetRecorder:
     def toggle(self, hud=None):
         self.recording = not self.recording
         if self.recording:
-            os.makedirs(os.path.join(self.output_dir, 'images'), exist_ok=True)
-            os.makedirs(os.path.join(self.output_dir, 'labels'), exist_ok=True)
+            os.makedirs(self.image_dir, exist_ok=True)
+            os.makedirs(self.gt_mask_dir, exist_ok=True)
             self.frame_count = self._next_frame_index()
             self._last_save_time = 0.0
             msg = 'Segmentation Dataset Recording ON -> %s (next frame: %06d)' % (
-                self.output_dir, self.frame_count)
+                self.image_dir, self.frame_count)
         else:
             msg = 'Segmentation Dataset Recording OFF (%d frames saved)' % self.frame_count
         print(msg)
@@ -2474,11 +2514,11 @@ class SegmentationDatasetRecorder:
         stem = '%06d' % self.frame_count
 
         # Source RGB image
-        cv2.imwrite(os.path.join(self.output_dir, 'images', stem + '.png'), self._rgb_array)
+        cv2.imwrite(os.path.join(self.image_dir, stem + '.png'), self._rgb_array)
 
         # Label image: map class IDs -> BGR colors via LUT
         label_bgr = self._color_lut[self._seg_array]   # (H, W, 3) BGR
-        cv2.imwrite(os.path.join(self.output_dir, 'labels', stem + '.png'), label_bgr)
+        cv2.imwrite(os.path.join(self.gt_mask_dir, stem + '.png'), label_bgr)
 
         self.frame_count += 1
 
@@ -2512,6 +2552,10 @@ def game_loop(args):
     ros_node = rclpy.create_node('mining_sim_bridge')
     ros_node.create_subscription(AckermannDrive, '/carla/ego_vehicle/ackermann_cmd', ackermann_callback, 10)
     speed_pub = ros_node.create_publisher(Float32, '/carla/ego_vehicle/speed', 10)
+    global g_ros_image_pub
+    g_ros_image_pub = ros_node.create_publisher(RosImage, '/carla/ego_vehicle/rgb/image', 10)
+    img_pub_thread = threading.Thread(target=_ros_image_publisher_thread, daemon=True)
+    img_pub_thread.start()
 
     world = None
     original_settings = None
@@ -2645,8 +2689,8 @@ def main():
     argparser.add_argument(
         '--tag_config', metavar='PATH',
         default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             'config', 'carla_tag_to_objectseg.yaml'),
-        help='Path to CARLA tag→class mapping YAML (default: scripts/config/carla_tag_to_objectseg.yaml)')
+                             'config', 'carla_objectseg.yaml'),
+        help='Path to CARLA tag→class mapping YAML (default: scripts/config/carla_objectseg.yaml)')
     args = argparser.parse_args()
 
     args.width, args.height = [int(x) for x in args.res.split('x')]

@@ -1,6 +1,6 @@
 # Training
 
-Training scripts for all four networks. Each script handles multi-dataset
+Training scripts for all five networks. Each script handles multi-dataset
 loading, gradient accumulation, TensorBoard logging, checkpointing, and
 validation automatically.
 
@@ -21,6 +21,68 @@ All scripts expect datasets arranged as:
 
 Use `data_parsing/mask_editing.py` to convert third-party datasets into this
 layout before training.
+
+---
+
+## train_object_seg.py — Object Segmentation
+
+Trains `ObjectSegNetwork` for 5-class semantic segmentation.
+
+**Classes:**
+
+| ID | Name | Color |
+|---|---|---|
+| 0 | background | blue `(61, 93, 255)` |
+| 1 | man-made_structures | pink `(255, 28, 145)` |
+| 2 | vulnerable_living | red `(255, 61, 61)` |
+| 3 | vehicle | light orange `(255, 190, 61)` |
+| 4 | natural_obstacles | dark green `(0, 100, 0)` |
+
+**Supported datasets:** `CaSSeD`, `Goose`, `OFFSED`, `ORFD`, `Rellis_3D`, `Yamaha_CMU`, `CARLA_Mining`
+
+```bash
+python train_object_seg.py \
+  -r /path/to/dataset_root \
+  -s /path/to/save_checkpoints/ \
+  -m /path/to/pretrained_sceneseg.pth \
+  -e 100 \
+  --learning_rate 0.0001
+```
+
+Resume from checkpoint:
+
+```bash
+python train_object_seg.py \
+  -r /path/to/dataset_root \
+  -s /path/to/save_checkpoints/ \
+  -c /path/to/objectseg.pth \
+  -l \
+  -e 100 -a 50
+```
+
+Train on a subset of datasets:
+
+```bash
+python train_object_seg.py \
+  -r /path/to/dataset_root \
+  -s /path/to/save_checkpoints/ \
+  -d CARLA_Mining Goose \
+  -e 100
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `-r, --root` | required | Dataset root directory |
+| `-s, --model_save_root_path` | required | Checkpoint save directory |
+| `-m, --pretrained_checkpoint_path` | — | Pre-trained SceneSeg backbone weights |
+| `-c, --checkpoint_path` | — | Existing ObjectSeg checkpoint to resume from |
+| `-l, --load_from_save` | false | Load weights from `-c` checkpoint |
+| `-d, --datasets` | all | One or more dataset names to train on |
+| `-e, --num_epochs` | 100 | Number of training epochs |
+| `-a, --start_epoch` | 0 | Starting epoch (for resuming) |
+| `--learning_rate` | 0.0001 | Learning rate |
+
+**Validation metric**: mIoU (overall + per class, logged to TensorBoard)
 
 ---
 

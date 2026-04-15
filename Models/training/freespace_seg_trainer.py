@@ -10,7 +10,7 @@ from PIL import Image
 import sys
 sys.path.append('..')
 from data_utils.augmentations import Augmentations
-from model_components.freespace_network import FreespaceNetwork
+from model_components.freespace_networks import FreespaceNetwork
 from model_components.scene_seg_network import SceneSegNetwork
 
 
